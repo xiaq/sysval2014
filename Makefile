@@ -10,6 +10,6 @@
 	mcrl22lps -lregular2 -v $< $@
 
 %.lts: %.lps
-	lps2lts -v $< $@
+	lps2lts -vD $< $@
 
 doc.pdf: p.mcrl2

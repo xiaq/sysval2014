@@ -1,0 +1,2 @@
+#!/bin/sh
+lps2pbes p.lps -f "$1" | pbes2bool

@@ -46,6 +46,9 @@ proc
   A(m: ATPMode) =
     (r_reset_1 + r_atp_standby) . ((m == Standby) -> A(m) <> AM(Standby)) +
     r_atp_wakeup . ((m == Standby) -> AM(Normal) <> A(m)) +
+    (m == Dead) -> (
+      sum s: ATPSignal . sum v: Nat . sum b: Bool .
+        r_update(s, v, b) . s_done . A(m)) +
     (m == Normal) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
         (!b && v > vm(s)) -> s_bell . timer1 . s_done . AM(Ringing) <>
