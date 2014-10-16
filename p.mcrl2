@@ -1,12 +1,12 @@
 sort
   ATPSignal = struct BD | S4 | S6 | S8 | S13;
-  ATPMode = struct Normal | Ringing | Tolerating | Standby | Dead;
+  ATPMode = struct Normal | Ringing | Ringed | Tolerating | Standby | Dead;
 
-map s_to_vm: ATPSignal -> Nat;
-    vm_large, dv: Nat;
+map vm: ATPSignal -> Nat;
+    vu, dv: Nat;
 
-eqn s_to_vm(S4) = 4; s_to_vm(S6) = 6; s_to_vm(S8) = 8; s_to_vm(S13) = 13;
-    vm_large = 14; dv = 1;
+eqn vm(S4) = 4; vm(S6) = 6; vm(S8) = 8; vm(S13) = 13;
+    vu = 14; dv = 1;
 
 act
   %% External       Internal
@@ -18,76 +18,101 @@ act
                     s_ebrake_2, r_ebrake_2, sr_ebrake_2,
   reset,            s_reset_1, r_reset_1, sr_reset_1,
                     s_reset_2, r_reset_2, sr_reset_2,
-                    s_atp_Standby, r_atp_Standby, sr_atp_Standby,
+                    s_atp_standby, r_atp_standby, sr_atp_standby,
+                    s_atp_wakeup, r_atp_wakeup, sr_atp_wakeup,
+                    s_done, r_done, sr_done,
   ertms_signal,
-  ertms_Standby;
-  atp_signal                                                        : ATPSignal;
-                    s_max_speed, r_max_speed, sr_max_speed          : Nat;
-  speed,            s_speed, r_speed, sr_speed                      : Nat;
-  brake_status,     s_brake_status, r_brake_status, sr_brake_status : Bool;
+  ertms_standby;
+  atp_mode: ATPMode;
+  update,           s_update, r_update, sr_update: ATPSignal # Nat # Bool;
 
 proc
   %% Generic ATP
-  G(v: Nat) =
-      beacon_stop . s_beacon_stop . G(v)
-    + (v == 0) -> reset . s_reset_1 . s_reset_2 . G(v)
-    + (r_ebrake_1 + r_ebrake_2) . ebrake . G(v)
-    + r_bell . bell . G(v)
-    + ertms_signal . s_atp_Standby . G(v)
-    + sum v': Nat . (0 <= v' && v' <= 14) ->
-        speed(v') . s_speed(v') . G(v')
-    + sum b': Bool . brake_status(b') . s_brake_status(b') . G(v)
-    + sum s: ATPSignal . (atp_signal(s) .
-      (((s == BD) -> s_atp_Standby <> s_max_speed(s_to_vm(s))) .
-        ertms_Standby . G(v)));
+  G(v: Nat, i: Bool) =
+    i -> (
+      beacon_stop . s_beacon_stop . G(v, false) +
+      ertms_signal . s_atp_standby . G(v, true) +
+      (v == 0) -> reset . s_reset_1 . s_reset_2 . G(v, true) +
+      sum s: ATPSignal .
+        sum v: Nat . (v <= 14) ->
+          sum b: Bool . update(s, v, b) . ertms_standby .
+            ((s == BD) -> (s_atp_standby . G(v, true)) <>
+              (s_atp_wakeup . s_update(s, v, b) . G(v, false)))) +
+    (r_ebrake_1 + r_ebrake_2) . ebrake . G(v, i) +
+    r_bell . bell . G(v, i) +
+    r_done . G(v, true);
 
-  A(m: ATPMode, v: Nat, vm: Nat, b: Bool) =
-      (r_reset_1 + r_atp_Standby) . A(Standby, v, vm, b)
-    + sum v': Nat . r_speed(v') . A(m, v', vm, b)
-    + sum vm': Nat . r_max_speed(vm') .
-        ((m == Standby) -> A(Normal, v, vm', b) <> A(m, v, vm', b))
-    + sum b': Bool . r_brake_status(b') . A(m, v, vm, b')
-    + (m == Normal) -> (
-        (!b && v > vm) -> s_bell . timer1 . A(Ringing, v, vm, b)
-      + (b && v > vm && v <= vm + dv) ->
-          s_bell . s_bell . s_bell . timer2 . A(Tolerating, v, vm, b))
-    + (m == Tolerating) -> (
-        (!b && v > vm + dv) -> s_bell . timer1 . A(Ringing, v, vm, b)
-      + ((v <= vm) -> tau . A(Normal, v, vm, b))
-      + timeout2 . A(Normal, v, vm, b))
-    + (m == Ringing) ->
-        timeout1 .
-        (b -> A(Normal, v, vm, b) <> (s_ebrake_1 . A(Dead, v, vm, b)));
+  %% ATP++
+  A(m: ATPMode) =
+    (r_reset_1 + r_atp_standby) . ((m == Standby) -> A(m) <> AM(Standby)) +
+    r_atp_wakeup . ((m == Standby) -> AM(Normal) <> A(m)) +
+    (m == Normal) -> (
+      sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
+        (!b && v > vm(s)) -> s_bell . timer1 . s_done . AM(Ringing) <>
+        (b && v > vm(s) && v <= vm(s) + dv) ->
+          s_bell . s_bell . s_bell . timer2 . s_done . AM(Tolerating) <>
+        s_done . A(m))) +
+    (m == Tolerating) -> (
+      timeout2 . AM(Normal) +
+      sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
+        (!b && v > vm(s) + dv) -> s_bell . timer1 . s_done . AM(Ringing) <>
+        (v <= vm(s)) -> s_done . AM(Normal) <>
+        s_done . A(m))) +
+    (m == Ringing) -> (
+      timeout1 . A(Ringed) +
+      sum s: ATPSignal . sum v: Nat . sum b: Bool . (
+        r_update(s, v, b) . s_done . A(m))) +
+    (m == Ringed) -> (
+      sum s: ATPSignal . sum v: Nat . sum b: Bool . (
+        r_update(s, v, b) . (
+          (b -> (s_done . AM(Normal)) <> (s_ebrake_1 . s_done .  AM(Dead))))));
+
+  AM(m: ATPMode) = atp_mode(m) . A(m);
 
   %% Beacon Stopper
-  B = r_beacon_stop . s_ebrake_2 . r_reset_2 . B;
+  B(d: Bool) =
+    r_reset_2 . B(false) +
+    d -> (r_beacon_stop . s_done . B(d)) <>
+      (r_beacon_stop . s_ebrake_2 . s_done . B(true));
 
 init
   hide(
     {
-      sr_beacon_stop,
-      sr_bell,
-      sr_ebrake_1,
-      sr_ebrake_2,
-      sr_reset_1,
-      sr_reset_2,
-      sr_atp_Standby,
-      sr_max_speed,
-      sr_speed,
-      sr_brake_status
+%      sr_beacon_stop,
+%      sr_bell,
+%      sr_ebrake_1,
+%      sr_ebrake_2,
+%      sr_reset_1,
+%      sr_reset_2,
+%      sr_atp_wakeup,
+%      sr_atp_standby,
+%      sr_done,
+%      sr_update
+      s_update
     },
-    block(
+    allow(
       {
-        s_beacon_stop, r_beacon_stop,
-        s_bell, r_bell,
-        s_ebrake_1, r_ebrake_1,
-        s_ebrake_2, r_ebrake_2,
-        s_reset_1, r_reset_1,
-        s_reset_2, r_reset_2,
-        s_atp_Standby, r_atp_Standby,
-        s_max_speed, r_max_speed,
-        s_speed, r_speed,
-        s_brake_status, r_brake_status
+        timer1, timeout1,
+        timer2, timeout2,
+        beacon_stop,
+        bell,
+        ebrake,
+        reset,
+        ertms_signal,
+        ertms_standby,
+        atp_mode,
+        update,
+
+        sr_beacon_stop,
+        sr_bell,
+        sr_ebrake_1,
+        sr_ebrake_2,
+        sr_reset_1,
+        sr_reset_2,
+        sr_atp_wakeup,
+        sr_atp_standby,
+        sr_done,
+        sr_update
       },
       comm(
         {
@@ -97,10 +122,10 @@ init
           s_ebrake_2|r_ebrake_2 -> sr_ebrake_2,
           s_reset_1|r_reset_1 -> sr_reset_1,
           s_reset_2|r_reset_2 -> sr_reset_2,
-          s_atp_Standby|r_atp_Standby -> sr_atp_Standby,
-          s_max_speed|r_max_speed -> sr_max_speed,
-          s_speed|r_speed -> sr_speed,
-          s_brake_status|r_brake_status -> sr_brake_status
+          s_atp_wakeup|r_atp_wakeup -> sr_atp_wakeup,
+          s_atp_standby|r_atp_standby -> sr_atp_standby,
+          s_done|r_done -> sr_done,
+          s_update|r_update -> sr_update
         },
-        G(0) || A(Standby, 0, vm_large, true) || B
+        G(0, true) || A(Standby) || B(false)
   )));

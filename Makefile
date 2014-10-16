@@ -4,10 +4,10 @@
 	xelatex $<
 
 %.tex: %.md
-	pandoc -f markdown+definition_lists -so $@ $<
+	pandoc -so $@ $<
 
 %.lps: %.mcrl2
-	mcrl22lps -v $< $@
+	mcrl22lps -lregular2 -v $< $@
 
 %.lts: %.lps
 	lps2lts -v $< $@

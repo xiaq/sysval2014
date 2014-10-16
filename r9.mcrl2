@@ -1,0 +1,1 @@
+[ (forall s: ATPSignal, v: Nat, b: Bool . val(1 <= v && v <= vu) => update(s, v, b)) . (!(forall s: ATPSignal, v: Nat, b: Bool . update(s, v, b)))* ] < reset > false

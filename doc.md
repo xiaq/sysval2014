@@ -1,143 +1,181 @@
 # Global Requirements
 
-Notes:
+\newcommand{\Normal}{\textsc{Normal}\xspace}
+\newcommand{\Tolerating}{\textsc{Tolerating}\xspace}
+\newcommand{\Ringing}{\textsc{Ringing}\xspace}
+\newcommand{\Dead}{\textsc{Dead}\xspace}
+\newcommand{\Standby}{\textsc{Standby}\xspace}
+\newcommand{\true}{\text{true}\xspace}
+\newcommand{\false}{\text{false}\xspace}
+
+\newcommand{\act}[1]{\textsc{#1}\xspace}
+
+## Assumptions about the external world
+
+1.  The ERTMS system comes into charge whenever it detects the presense of ERTMS signals; it goes out of charge when the ATP system asks it to do so.
 
 1.  When the ERTMS system is in charge, it controls the brake and UI according to the ERTMS signals it receives. When it is not, it polls the current speed and brake status periodically and make this information available to the ATP system. When the ATP system requests it to ring the bell or start emergency braking, it acts accordingly.
 
 1.  The APT system always polls ATP signals on the antenna, whether it is in charge or not. There is a special signal that indicates ATP should be switched off called “BD” (buiten dienst).
 
-1.  When the ATP system is in charge, it may be “tolerating”. This is needed for the situations where the brake may be released, even if current speed is greater than the required maximum speed.
-
 1.  After emergency braking, the driver cannot release the brake until the whole system is reset.
 
-Definition:
+## Note on ATP modes
 
-1.  The ATP system is defined to be in charge whenever it receives a non-BD signal on its antenna until ERTMS signal is detected or a BD signal is received.
+We designate five **modes** for the ATP system, namely \Normal{}, \Tolerating{}, \Ringing{}, \Dead{} and \Standby{}. Ideally, knowledge about the different modes should be internal details. However, we find it very tricky to specify the requirements without explicitly considering modes. Below is an informal description of the different modes:
 
-1.  The ERTMS system is defined to be in charge whenever ERTMS signal is detected until the ATP system asks it to enter standby mode.
+1.  ATP is in \Standby{} mode either when ERTMS is in charge, or the last ATP signal was BD.
 
-Requirements:
+1.  ATP is in \Dead{} mode after emergency brake and a reset is required.
 
-1.  When the ATP system is in charge:
+1.  The other three modes are best explained by illustrating a typical scenerio of over-speeding. As shown in \autoref{fig:over-speeding},
 
-    1.  If the current speed V is higher than the maximum speed required on the antenna, Vm (or Vm + some predefined value ΔV, when ATP is tolerating),
-        1.  If the brake is off, ATP will request ERTMS to ring the bell. If in 3 seconds, the brake is still off, ATP will request ERTMS to start emergency braking.
-        1.  If the brake is on and ATP is non-tolerating, and V < Vm + ΔV, ATP will request ERTMS to ring the bell 3 times. ATP will then become “tolerating”.
-        1.  If the brake is on and ATP is non-tolerating, then as long as $V \ge V_m \Delta V$, ATP will stay non-tolerating.
+    1.  At time $t=0$, ATP is in \Normal{} mode. The train is found to be over-speeding, due to a change in the ATP signal; the maximum speed allowed is $vm$. The brake is off ATP rings the bell and enters the \Ringing{} mode which always lasts for 3 seconds.
 
-    1.  If ATP is tolerating,
-        1.  If the current speed V is lower than Vm, it will become non-tolerating.
-        1.  It will become non-tolerating after a predefined time period of Δt.
-        1.  If the current V is higher than Vm, it will stay tolerating within a time period of Δt.
+    1.  The \Ringing{} mode is special in that *no* speed limits are enfored; instead, ATP waits for the driver to take action. After 3 seconds, ATP finds out that the brake is now on, and comes back to \Normal{} mode.
 
-    1.  If it detects a “beacon-stop” signal, it will request ERTMS to start emergency braking.
+    1.  The speed of train now starts to decrease, until it reaches $vm + \Delta v$, and ATP now ring the bell three times and enters \Tolerating{} mode.
 
-    1.  If the current speed V is not higher than the aforementioned speed, and no “beacon-stop” signal is detected, then ATP will not request ERTMS to ring the bell or start emergency braking.
+    1.  The \Tolerating{} mode will enfore a modified speed limit of $vm + \Delta v$ instead of $vm$, so the current speed is now considered over-speeding and the driver may release the brake. After the speed $vm$ is reached, ATP goes back to \Normal{} mode.
 
-1.  When the ATP system is not in charge, it will not request ERTMS to ring the bell or start emergency braking.
+\begin{figure}[h]
+\begin{center}
+    \includegraphics{figures/over-speeding}
+    \caption{A typical over-speeding scenerio}
+    \label{fig:over-speeding}
+\end{center}
+\end{figure}
 
-1.  When the ATP system is not in charge, and it receives a non-BD signals on the antenna it will inform ERTMS that ATP will be in charge.
+The exact relationships between the modes are specified in the requirements.
+
+## Requirements
+
+1.  When ATP is in \Normal{} mode:
+
+    1.  If the brake is off, and the current speed is higher than the maximum speed allowed on the antenna (known as $vm$ afterwards), ATP requests ERTMS to ring the bell and enters \Ringing{} mode.
+
+    1.  If the brake is on, and current speed is between $vm$ and $vm + \Delta v$, ATP requests ERTMS to ring the bell three times and enter \Tolerating{} mode.
+
+    1.  Otherwise, no bell is ringed and ATP stays in this mode.
+
+1.  When ATP is in \Tolerating{} mode:
+
+    1.  If the brake is off, and the current speed is higher than $vm + \Delta v$, ATP requests ERTMS to ring the bell and enters \Ringing{} mode.
+
+    1.  If the current speed is lower than $vm$, ATP enters \Normal{} mode.
+
+    1.  ATP always enters \Normal{} after a specified amount of time, $\Delta t$.
+
+    1.  If the current speed is higher than $vm$, ATP will stay in \Tolerating{} mode within $\Delta t$.
+
+1.  Three seconds after ATP enters \Ringing{} mode:
+
+    1.  If the brake is on, ATP enters \Normal{} mode.
+
+    1.  If the brake is off, ATP initates an emergency brake.
+
+1.  When ATP is not in \Standby{} mode and a beacon-stop signal is detected, it will request ERTMS to start emergency braking.
+
+1.  When ATP is in \Standby{} mode, it will not request ERTMS to ring the bell or start emergency braking.
+
+1.  When ATP is in \Standby{} mode, and it receives signals on the antenna it will inform ERTMS that ATP will be in charge. If the signal is not BD, it will then enter \Normal{} mode.
+
+1.  Whenever ATP receives BD signal on the antenna, it enters \Standby{} mode.
 
 1.  When the current speed is 0, the whole system may be reset.
 
 1.  When the current speed is not 0, the whole system may not be reset.
 
+1.  The system is free of deadlocks.
+
 # External Actions
 
-speed(V)
-:    ERTMS informs ATP about the current speed of the train V, a number.
+\act{update}$(s, v, b)$: ATP is informed of the current ATP signal, the current speed and the current brake status. This action always happens when an ATP signal is received on the antenna.
 
-brake-status(B)
-:    ERTMS informs ATP about the current brake status B, a boolean value.
+\act{ertms-signal}: ERTMS informs ATP that ERTMS signal is detected and therefore ERTMS will be in charge.
 
-ertms-signal
-:    ERTMS informs ATP that ERTMS signal is detected and therefore ERTMS will be in charge.
+\act{beacon-stop}: ATP receives a stop signal from a beacon.
 
-atp-signal(S)
-:    ATP reads from the antenna a signal S. Some possible values of S are BD, Speed60, Speed80, Speed130 and Speed140.
+\act{bell}: ATP requests ERTMS to ring the bell.
 
-beacon-stop
-:    ATP receives a stop signal from a beacon.
+\act{ebrake}: ATP requests ERTMS to start an emergency brake.
 
-bell
-:    ATP requests ERTMS to ring the bell.
+\act{ertms-standby}: ATP requests ERTMS to enter standby mode because ATP will be in charge.
 
-ebrake
-:    ATP requests ERTMS to start an emergency brake.
+\act{timer1}: ATP starts timer 1 which will go off in 3 seconds.
 
-ertms-standby
-:    ATP requests ERTMS to enter standby mode because ATP will be in charge.
+\act{timeout1}: timer1 goes off.
 
-timer1
-:    ATP starts timer 1 which will go off in 3 seconds.
+\act{timer2}: ATP starts timer 2 which will go off in 3 minutes.
 
-timeout1
-:    timer1 goes off.
+\act{timeout2}: timer2 goes off.
 
-timer2
-:    ATP starts timer 2 which will go off in 3 minutes.
+\act{reset}: The driver resets the whole system so that the brake can be released.
 
-timeout2
-:    timer2 goes off.
-
-reset
-:    The driver resets the whole system so that the brake can be released.
-
+\act{atp-mode}$(m)$: ATP announces its new mode.
 
 # Global Requirements (In Terms of External Actions)
 
-Notes:
+## Assumptions about the external world
 
-1.  When the ERTMS system is in charge, it controls the brake and UI according to the ERTMS signals it receives. When it is not, speed(V) and brake-status(B) actions periodically. When the ATP system initiates a bell or ebrake action, it acts accordingly.
+1.  The ERTMS system comes into charge whenver it detects the presense of ERTMS signals; it goes out of charge when the ATP system initiates an \act{ertms-enter-standby} action.
 
-1.  The action atp-signal(S) happens periodically, whether the ATP system is in charge or not. There is a special value of S, BD, that indicates ATP should be switched off. There is a function as-to-speed(S) that maps a signal to the corresponding required maximum speed.
+1.  When the ERTMS system is in charge, it controls the brake and UI according to the ERTMS signals it receives. When it is not, it controls the brake and the bell according to the \act{ebrake} and \act{bell} actions initiated by ATP.
 
-1.  When the ATP system is in charge, it may be “tolerating”. This is needed for the situations where the brake may be released, even if current speed is greater than the required maximum speed.
+1.  The action \act{update} happens periodically, if ATP signal is received on the antenna. It also informs the ATP system of the current speed and brake status. This action happens
 
-1.  After an ebrake action, the driver cannot release the brake until the whole system is reset.
+1.  After an \act{ebrake} action, the driver cannot release the brake until a \act{reset} action happens.
 
-Definitions:
+## Definition
 
-1.  The ATP system is defined to be in charge whenever atp-signal(S) happens and S is not equal to BD, until ertms-signal or atp-signal(BD) happens.
+1.  The **mode** of the ATP system is defined to be the data in the last $\act{atp-mode}(m)$ action. When no such action has happened, ATP is in \Standby mode.
 
-1.  The ERTMS system is defined to be in charge whenever ERTMS signal is detected until ertms-enter-standby happens.
+## Requirements
 
-1.  V is defined to be the data in the last speed(V) action.
+1.  When ATP is in \Normal{} mode and \act{update}$(s, v, b)$ happens:
 
-1.  B is defined to be the data in the last brake-status(B) action.
+    1.  If $v > vm(s)$ and $b = \false$, ATP initiates \act{bell} and enters \Ringing{} mode.
 
-1.  S is defined to be the data in the last atp-signal(S) action. Vm is defined to be as-to-speed(S).
+    1.  If $vm(s) < v < vm(s) + \Delta v$, ATP intiates three \act{bell} actions and enter \Tolerating{} mode.
 
-Requirements:
+    1.  Otherwise, no \act{bell} happens and no mode change happens.
 
-1.  When the ATP system is in charge:
+1.  When ATP is in \Tolerating{} mode:
 
-    1.  If V is higher than Vm (or Vm + some predefined value ΔV, when ATP is tolerating),
-        1.  If B is false, ATP initiates a bell action. If in 3 seconds, B is still false, ATP initiates ebrake.
-        1.  If B is true and ATP is non-tolerating, and V < Vm + ΔV, ATP will initiate 3 bell actions. ATP will then become “tolerating”.
-        1.  If B is true and ATP is non-tolerating, then as long as V $\ge$  Vm + ΔV, ATP will stay non-tolerating.
+    1. When \act{update}$(s, v, b)$ happens:
 
-    1.  If ATP is tolerating,
-        1.  If V is lower than Vm, it will become non-tolerating.
-        1.  It will become non-tolerating after a predefined time period of Δt.
-        1.  If the current V is higher than Vm, it will stay tolerating within a time period of Δt.
+        1.  If $v > vm(s) + \Delta v$ and $b = \false{}$, ATP initiates \act{bell} and enters \Ringing{} mode.
 
-    1.  If beacon-stop happens, it will initiate ebrake.
+        1.  If $v \le vm(s)$, ATP enters \Normal{} mode.
 
-    1.  If V is not higher than the aforementioned speed, and no beacon-stop happens, then ATP will initate bell or ebrake.
+        1.  Otherwise, no \act{bell} happens and no mode change happens.
 
-1.  When the ATP system is not in charge, it will not initiate bell or ebrake.
+    1.  When \act{timeout2} happens, it enters \Normal{} mode.
 
-1.  When the ATP system is not in charge, when atp-signal(S) happens it intiates ertms-standby.
+    1.  When no \act{timeout2} or \act{update} happens, no mode change happens.
 
-1.  When V = 0, the reset action is allowed.
+1.  When ATP is in \Ringing{} mode, and \act{timeout1} and \act{update}$(s, v, b)$ happens:
 
-1.  When V is not equal to 0, the reset action is not allowed.
+    1.  If $b = \true{}$, ATP enters \Normal{} mode.
 
-# Process definitions
+    1.  If $b = \false{}$, ATP initiates \act{ebrake} and enters \Dead{} mode.
 
-\begin{alltt}
-\input{p.mcrl2}
-\end{alltt}
+1.  When ATP is not in \Standby{} mode and \act{beacon-stop} happens, ATP will initiate \act{ebrake}.
 
-<!-- vi: se tw=0 ai sw=2 sts=2 ts=2: -->
+1.  When ATP is in \Standby{} mode, it will not initiate \act{bell} or \act{ebrake}.
+
+1.  When ATP is in \Standby{} mode and \act{update}$(s, v, b)$ happens, it intiates \act{ertms-standby}. If $s \neq \text{BD}$, it then enters \Normal mode.
+
+1.  Whenever \act{update}$(\text{BD}, v, b)$ happens, ATP enters \Standby{} mode.
+
+1.  When $v = 0$, \act{reset} is allowed.
+
+1.  When $v > 0$, \act{reset} is not allowed.
+
+1.  The system is free of deadlocks.
+
+# Process definition
+
+\verbinput{p.mcrl2}
+
+<!-- vi: se tw=0 ai: -->
