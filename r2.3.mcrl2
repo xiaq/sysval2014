@@ -1,0 +1,1 @@
+[true* . atp_mode(Tolerating) . (!( forall m: ATPMode. atp_mode(m)))* . (!(timeout2 || forall s: ATPSignal, v: Nat, b: Bool. val(v<=vu)=> update(s, v, b)))* . forall m: ATPMode. atp_mode(m)]false

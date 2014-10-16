@@ -1,2 +1,0 @@
-[ true* . atp_mode(Ringing) . !(forall m: ATPMode . atp_mode(m))* . timeout1 . (forall s: ATPSignal, v: Nat . update(s, v, true)) ]
-  mu X . ( !(atp_mode(Normal)) || X )

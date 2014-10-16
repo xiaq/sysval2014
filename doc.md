@@ -138,7 +138,7 @@ The exact relationships between the modes are specified in the requirements.
 
     1.  If $vm(s) < v < vm(s) + \Delta v$, ATP intiates three \act{bell} actions and enter \Tolerating{} mode.
 
-    1.  Otherwise, no \act{bell} happens and no mode change happens.
+    1.  Otherwise, as long as no more \act{update} happens, no \act{bell} happens and no mode change happens.
 
 1.  When ATP is in \Tolerating{} mode:
 
@@ -148,7 +148,7 @@ The exact relationships between the modes are specified in the requirements.
 
         1.  If $v \le vm(s)$, ATP enters \Normal{} mode.
 
-        1.  Otherwise, no \act{bell} happens and no mode change happens.
+        1.  Otherwise, as long as no more \act{update} happens, no \act{bell} happens and no mode change happens.
 
     1.  When \act{timeout2} happens, it enters \Normal{} mode.
 

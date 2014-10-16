@@ -1,0 +1,1 @@
+[true* . atp_mode(Tolerating) . (!( forall m: ATPMode. atp_mode(m)))* . timeout2]mu X. ([!atp_mode(Normal)]X && <true>true)

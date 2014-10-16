@@ -18,8 +18,10 @@ act
                     s_ebrake_2, r_ebrake_2, sr_ebrake_2,
   reset,            s_reset_1, r_reset_1, sr_reset_1,
                     s_reset_2, r_reset_2, sr_reset_2,
-                    s_atp_standby, r_atp_standby, sr_atp_standby,
-                    s_atp_wakeup, r_atp_wakeup, sr_atp_wakeup,
+                    s_atp_standby_1, r_atp_standby_1, sr_atp_standby_1,
+                    s_atp_standby_2, r_atp_standby_2, sr_atp_standby_2,
+                    s_atp_wakeup_1, r_atp_wakeup_1, sr_atp_wakeup_1,
+                    s_atp_wakeup_2, r_atp_wakeup_2, sr_atp_wakeup_2,
                     s_done, r_done, sr_done,
   ertms_signal,
   ertms_standby;
@@ -31,21 +33,21 @@ proc
   G(v: Nat, i: Bool) =
     i -> (
       beacon_stop . s_beacon_stop . G(v, false) +
-      ertms_signal . s_atp_standby . G(v, true) +
+      ertms_signal . s_atp_standby_1 . s_atp_standby_2 . G(v, true) +
       (v == 0) -> reset . s_reset_1 . s_reset_2 . G(v, true) +
       sum s: ATPSignal .
         sum v: Nat . (v <= 14) ->
           sum b: Bool . update(s, v, b) . ertms_standby .
-            ((s == BD) -> (s_atp_standby . G(v, true)) <>
-              (s_atp_wakeup . s_update(s, v, b) . G(v, false)))) +
+            ((s == BD) -> (s_atp_standby_1 . s_atp_standby_2 . G(v, true)) <>
+              (s_atp_wakeup_1 . s_update(s, v, b) . G(v, false)))) +
     (r_ebrake_1 + r_ebrake_2) . ebrake . G(v, i) +
     r_bell . bell . G(v, i) +
     r_done . G(v, true);
 
   %% ATP++
   A(m: ATPMode) =
-    (r_reset_1 + r_atp_standby) . ((m == Standby) -> A(m) <> AM(Standby)) +
-    r_atp_wakeup . ((m == Standby) -> AM(Normal) <> A(m)) +
+    (r_reset_1 + r_atp_standby_1) . ((m == Standby) -> A(m) <> AM(Standby)) +
+    r_atp_wakeup_1 . ((m == Standby) -> AM(Normal) <> A(m)) +
     (m == Dead) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
         r_update(s, v, b) . s_done . A(m)) +
@@ -73,25 +75,28 @@ proc
   AM(m: ATPMode) = atp_mode(m) . A(m);
 
   %% Beacon Stopper
-  B(d: Bool) =
-    r_reset_2 . B(false) +
-    d -> (r_beacon_stop . s_done . B(d)) <>
-      (r_beacon_stop . s_ebrake_2 . s_done . B(true));
+  B(m: ATPMode) =
+    (r_reset_2 + r_atp_standby_2) . B(Normal) +
+    r_atp_wakeup_2 . B(Normal) +
+    (m == Normal) -> r_beacon_stop . s_ebrake_2 . s_done . B(Dead) +
+    (m == Dead || m == Standby) -> r_beacon_stop . s_done . B(m);
 
 init
   hide(
     {
-%      sr_beacon_stop,
-%      sr_bell,
-%      sr_ebrake_1,
-%      sr_ebrake_2,
-%      sr_reset_1,
-%      sr_reset_2,
-%      sr_atp_wakeup,
-%      sr_atp_standby,
-%      sr_done,
-%      sr_update
-      s_update
+      sr_beacon_stop,
+      sr_bell,
+      sr_ebrake_1,
+      sr_ebrake_2,
+      sr_reset_1,
+      sr_reset_2,
+      sr_atp_wakeup_1,
+      sr_atp_wakeup_2,
+      sr_atp_standby_1,
+      sr_atp_standby_2,
+      sr_done,
+      sr_update
+%      s_update
     },
     allow(
       {
@@ -112,8 +117,10 @@ init
         sr_ebrake_2,
         sr_reset_1,
         sr_reset_2,
-        sr_atp_wakeup,
-        sr_atp_standby,
+        sr_atp_wakeup_1,
+        sr_atp_wakeup_2,
+        sr_atp_standby_1,
+        sr_atp_standby_2,
         sr_done,
         sr_update
       },
@@ -125,10 +132,12 @@ init
           s_ebrake_2|r_ebrake_2 -> sr_ebrake_2,
           s_reset_1|r_reset_1 -> sr_reset_1,
           s_reset_2|r_reset_2 -> sr_reset_2,
-          s_atp_wakeup|r_atp_wakeup -> sr_atp_wakeup,
-          s_atp_standby|r_atp_standby -> sr_atp_standby,
+          s_atp_wakeup_1|r_atp_wakeup_1 -> sr_atp_wakeup_1,
+          s_atp_wakeup_2|r_atp_wakeup_2 -> sr_atp_wakeup_2,
+          s_atp_standby_1|r_atp_standby_1 -> sr_atp_standby_1,
+          s_atp_standby_2|r_atp_standby_2 -> sr_atp_standby_2,
           s_done|r_done -> sr_done,
           s_update|r_update -> sr_update
         },
-        G(0, true) || A(Standby) || B(false)
+        G(0, true) || A(Standby) || B(Standby)
   )));
