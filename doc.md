@@ -152,7 +152,7 @@ The exact relationships between the modes are specified in the requirements.
 
     1.  When \act{timeout2} happens, it enters \Normal{} mode.
 
-    1.  When no \act{timeout2} or \act{update} happens, no mode change happens.
+    1.  When none of \act{timeout2}, \act{update} or \act{ertms-signal} happens, no mode change happens.
 
 1.  When ATP is in \Ringing{} mode, and \act{timeout1} and \act{update}$(s, v, b)$ happens:
 
