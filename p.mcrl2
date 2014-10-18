@@ -14,8 +14,7 @@ act
   timeout2,
   beacon_stop,      s_beacon_stop, r_beacon_stop, sr_beacon_stop,
   bell,             s_bell, r_bell, sr_bell,
-  ebrake,           s_ebrake_1, r_ebrake_1, sr_ebrake_1,
-                    s_ebrake_2, r_ebrake_2, sr_ebrake_2,
+  ebrake,           s_ebrake, r_ebrake, sr_ebrake,
   reset,            s_reset_1, r_reset_1, sr_reset_1,
                     s_reset_2, r_reset_2, sr_reset_2,
                     s_atp_standby_1, r_atp_standby_1, sr_atp_standby_1,
@@ -41,7 +40,7 @@ proc
           sum b: Bool . update(s, v, b) . ertms_standby .
             ((s == BD) -> (s_atp_standby_1 . G(v, false, Standby)) <>
               (s_atp_wakeup_1 . s_update(s, v, b) . G(v, false, Normal)))) +
-    (r_ebrake_1 + r_ebrake_2) . ebrake . G(v, i, Dead) +
+    r_ebrake . ebrake . G(v, i, Dead) +
     r_bell . bell . G(v, i, m) +
     r_done . G(v, true, m);
 
@@ -72,7 +71,7 @@ proc
     (m == Ringed) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . (
         r_update(s, v, b) . (
-          (b -> ADM(Normal) <> (s_ebrake_1 . ADM(Dead))))));
+          (b -> ADM(Normal) <> (s_ebrake . ADM(Dead))))));
 
   AM(m: ATPMode) = atp_mode(m) . A(m);
 
@@ -80,15 +79,14 @@ proc
 
   %% Beacon Stopper
   B =
-    r_beacon_stop . s_ebrake_2 . s_done . B;
+    r_beacon_stop . s_ebrake . s_done . B;
 
 init
   hide(
     {
       sr_beacon_stop,
       sr_bell,
-      sr_ebrake_1,
-      sr_ebrake_2,
+      sr_ebrake,
       sr_reset_1,
       sr_reset_2,
       sr_atp_wakeup_1,
@@ -114,8 +112,7 @@ init
 
         sr_beacon_stop,
         sr_bell,
-        sr_ebrake_1,
-        sr_ebrake_2,
+        sr_ebrake,
         sr_reset_1,
         sr_reset_2,
         sr_atp_wakeup_1,
@@ -129,8 +126,7 @@ init
         {
           s_beacon_stop|r_beacon_stop -> sr_beacon_stop,
           s_bell|r_bell -> sr_bell,
-          s_ebrake_1|r_ebrake_1 -> sr_ebrake_1,
-          s_ebrake_2|r_ebrake_2 -> sr_ebrake_2,
+          s_ebrake|r_ebrake -> sr_ebrake,
           s_reset_1|r_reset_1 -> sr_reset_1,
           s_reset_2|r_reset_2 -> sr_reset_2,
           s_atp_wakeup_1|r_atp_wakeup_1 -> sr_atp_wakeup_1,
