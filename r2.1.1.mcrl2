@@ -1,1 +1,1 @@
-[true* . atp_mode(Tolerating) . (!( forall m: ATPMode. atp_mode(m)))* . forall s: ATPSignal, v: Nat, b: Bool. val(((vm(s)+dv)<= v) && v<= vu && b==false)=>update(s, v, b)]mu X. mu Y.([!bell]X && [!atp_mode(Ringing)]Y && <true>true)
+[true* . atp_mode(Tolerating) . (forall m: ATPMode. !atp_mode(m))* . exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && (vm(s)+dv)<= v && v<= vu && !b) && update(s, v, b)] mu X. mu Y.([!bell]X && [!atp_mode(Ringing)]Y && <true>true)

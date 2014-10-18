@@ -1,2 +1,4 @@
 #!/bin/sh
-lps2pbes p.lps -f "$1" | pbes2bool
+mcf=$1
+shift
+lps2pbes p.lps -f "$mcf" | pbes2bool "$@"

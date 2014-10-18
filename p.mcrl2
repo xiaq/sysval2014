@@ -10,8 +10,8 @@ eqn vm(S4) = 4; vm(S6) = 6; vm(S8) = 8; vm(S13) = 13;
 
 act
   %% External       Internal
-  timer1, timeout1,
-  timer2, timeout2,
+  timeout1,
+  timeout2,
   beacon_stop,      s_beacon_stop, r_beacon_stop, sr_beacon_stop,
   bell,             s_bell, r_bell, sr_bell,
   ebrake,           s_ebrake_1, r_ebrake_1, sr_ebrake_1,
@@ -32,11 +32,12 @@ proc
   %% Generic ATP
   G(v: Nat, i: Bool) =
     i -> (
-      beacon_stop . s_beacon_stop . G(v, false) +
       ertms_signal . s_atp_standby_1 . s_atp_standby_2 . G(v, true) +
       (v == 0) -> reset . s_reset_1 . s_reset_2 . G(v, true) +
+
+      beacon_stop . s_beacon_stop . G(v, false) +
       sum s: ATPSignal .
-        sum v: Nat . (v <= 14) ->
+        sum v: Nat . (v <= vu) ->
           sum b: Bool . update(s, v, b) . ertms_standby .
             ((s == BD) -> (s_atp_standby_1 . s_atp_standby_2 . G(v, true)) <>
               (s_atp_wakeup_1 . s_update(s, v, b) . G(v, false)))) +
@@ -53,15 +54,15 @@ proc
         r_update(s, v, b) . s_done . A(m)) +
     (m == Normal) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
-        (!b && v > vm(s)) -> s_bell . timer1 . s_done . AM(Ringing) <>
+        (!b && v > vm(s)) -> s_bell . ADM(Ringing) <>
         (b && v > vm(s) && v <= vm(s) + dv) ->
-          s_bell . s_bell . s_bell . timer2 . s_done . AM(Tolerating) <>
+          s_bell . s_bell . s_bell . ADM(Tolerating) <>
         s_done . A(m))) +
     (m == Tolerating) -> (
       timeout2 . AM(Normal) +
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
-        (!b && v > vm(s) + dv) -> s_bell . timer1 . s_done . AM(Ringing) <>
-        (v <= vm(s)) -> s_done . AM(Normal) <>
+        (!b && v > vm(s) + dv) -> s_bell . ADM(Ringing) <>
+        (v <= vm(s)) -> ADM(Normal) <>
         s_done . A(m))) +
     (m == Ringing) -> (
       timeout1 . A(Ringed) +
@@ -70,9 +71,11 @@ proc
     (m == Ringed) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . (
         r_update(s, v, b) . (
-          (b -> (s_done . AM(Normal)) <> (s_ebrake_1 . s_done .  AM(Dead))))));
+          (b -> ADM(Normal) <> (s_ebrake_1 . ADM(Dead))))));
 
   AM(m: ATPMode) = atp_mode(m) . A(m);
+
+  ADM(m: ATPMode) = atp_mode(m) . s_done . A(m);
 
   %% Beacon Stopper
   B(m: ATPMode) =
@@ -100,8 +103,8 @@ init
     },
     allow(
       {
-        timer1, timeout1,
-        timer2, timeout2,
+        timeout1,
+        timeout2,
         beacon_stop,
         bell,
         ebrake,

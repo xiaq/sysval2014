@@ -1,1 +1,1 @@
-[ forall s: ATPSignal, b: Bool . update(s, 0, b) . (!(forall s: ATPSignal, v: Nat, b: Bool . update(s, v, b)))* ] < reset > true
+[ exists s: ATPSignal, b: Bool . update(s, 0, b) . (forall s: ATPSignal, v: Nat, b: Bool . !update(s, v, b))* ] < reset > true
