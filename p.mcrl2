@@ -47,7 +47,7 @@ proc
   %% ATP++
   %% m may be Dead, Normal, Tolerating, Ringing, Ringed or Standby.
   A(m: ATPMode) =
-    (r_reset_1 + r_atp_standby_1) . ((m == Standby) -> s_done . A(m) <> ADM(Standby)) +
+    (r_reset_1 + r_atp_standby_1) .  ADM(Standby) +
     r_atp_wakeup_1 . ((m == Standby) -> AM(Normal) <> A(m)) +
     (m == Dead) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
