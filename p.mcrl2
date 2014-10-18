@@ -30,24 +30,25 @@ act
 
 proc
   %% Generic ATP
-  G(v: Nat, i: Bool) =
+  %% m may be Standby, Normal or Dead.
+  G(v: Nat, i: Bool, m: ATPMode) =
     i -> (
-      ertms_signal . s_atp_standby_1 . s_atp_standby_2 . G(v, true) +
-      (v == 0) -> reset . s_reset_1 . s_reset_2 . G(v, true) +
-
-      beacon_stop . s_beacon_stop . G(v, false) +
+      (m != Dead) -> ertms_signal . s_atp_standby_1 . G(v, false, Standby) +
+      (v == 0 && m == Dead) -> reset . s_reset_1 . G(v, false, Standby) +
+      (m == Normal) -> beacon_stop . s_beacon_stop . G(v, false, m) +
       sum s: ATPSignal .
         sum v: Nat . (v <= vu) ->
           sum b: Bool . update(s, v, b) . ertms_standby .
-            ((s == BD) -> (s_atp_standby_1 . s_atp_standby_2 . G(v, true)) <>
-              (s_atp_wakeup_1 . s_update(s, v, b) . G(v, false)))) +
-    (r_ebrake_1 + r_ebrake_2) . ebrake . G(v, i) +
-    r_bell . bell . G(v, i) +
-    r_done . G(v, true);
+            ((s == BD) -> (s_atp_standby_1 . G(v, false, Standby)) <>
+              (s_atp_wakeup_1 . s_update(s, v, b) . G(v, false, Normal)))) +
+    (r_ebrake_1 + r_ebrake_2) . ebrake . G(v, i, Dead) +
+    r_bell . bell . G(v, i, m) +
+    r_done . G(v, true, m);
 
   %% ATP++
+  %% m may be Dead, Normal, Tolerating, Ringing, Ringed or Standby.
   A(m: ATPMode) =
-    (r_reset_1 + r_atp_standby_1) . ((m == Standby) -> A(m) <> AM(Standby)) +
+    (r_reset_1 + r_atp_standby_1) . ((m == Standby) -> s_done . A(m) <> ADM(Standby)) +
     r_atp_wakeup_1 . ((m == Standby) -> AM(Normal) <> A(m)) +
     (m == Dead) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
@@ -78,11 +79,8 @@ proc
   ADM(m: ATPMode) = atp_mode(m) . s_done . A(m);
 
   %% Beacon Stopper
-  B(m: ATPMode) =
-    (r_reset_2 + r_atp_standby_2) . B(Normal) +
-    r_atp_wakeup_2 . B(Normal) +
-    (m == Normal) -> r_beacon_stop . s_ebrake_2 . s_done . B(Dead) +
-    (m == Dead || m == Standby) -> r_beacon_stop . s_done . B(m);
+  B =
+    r_beacon_stop . s_ebrake_2 . s_done . B;
 
 init
   hide(
@@ -142,5 +140,5 @@ init
           s_done|r_done -> sr_done,
           s_update|r_update -> sr_update
         },
-        G(0, true) || A(Standby) || B(Standby)
+        G(0, true, Standby) || A(Standby) || B
   )));
