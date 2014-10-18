@@ -1,0 +1,1 @@
+forall s:ATPSignal, v: Nat, b: Bool.val(v<=vu)=>([true*.atp_mode(Standby).(!(atp_mode(Normal)||atp_mode(Ringing)||atp_mode(Tolerating)||atp_mode(Ringed)||atp_mode(Dead)))*.update(s,v,b)](<true>true && [!ertms_standby]false && [ertms_standby](val(s!=BD)=>(<true>true&&[!atp_mode(Normal)]false))))
