@@ -1,1 +1,1 @@
-[true*.atp_mode(Standby).(forall m: ATPMode . !atp_mode(m))*][bell+ebrake]false
+[true*.atp_mode(Standby).(!(exists m:ATPMode.(val(m!=Standby)&&atp_mode(m))))*][bell+ebrake]false

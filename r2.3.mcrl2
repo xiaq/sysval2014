@@ -1,1 +1,8 @@
-[true* . atp_mode(Tolerating) . (!(timeout2 || ertms_signal || exists s: ATPSignal, v: Nat, b: Bool. update(s, v, b) || exists m: ATPMode . atp_mode(m)))* . exists m: ATPMode. atp_mode(m)] false
+[
+% tolerating mode
+true* . atp_mode(Tolerating) .
+% no timeout2, ertms_signal, update happens
+(!(timeout2 || ertms_signal || exists s: ATPSignal, v: Nat, b: Bool. update(s, v, b)))*
+]
+% no atp_mode is possible
+[exists m: ATPMode. atp_mode(m)] false

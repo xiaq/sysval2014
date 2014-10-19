@@ -1,1 +1,1 @@
-[true*.forall m:ATPMode. val(m!=Standby)=>(atp_mode(m)).(!atp_mode(Standby))*.beacon_stop](<true>true && [!ebrake]false)
+[true*.(exists m:ATPMode.(val(m!=Standby)&& atp_mode(m))).(!atp_mode(Standby))*.beacon_stop]mu X.(<true>true && [!ebrake]X)

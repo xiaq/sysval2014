@@ -1,0 +1,8 @@
+[
+% ringing mode
+true* . atp_mode(Ringing) . (forall m: ATPMode. !atp_mode(m))* .
+% timeout1 and update(s, v, false) happens
+timeout1 . exists s: ATPSignal, v: Nat . val(s!=BD && v<=vu) && update(s,v,false)
+]
+% eventually both ebrake and atp_mode(Dead) will happen
+((mu X.([!ebrake]X && <true>true)) && (mu Y. ([!atp_mode(Dead)]Y && <true>true)))

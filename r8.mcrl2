@@ -1,1 +1,1 @@
-[ exists s: ATPSignal, b: Bool . update(s, 0, b) . (forall s: ATPSignal, v: Nat, b: Bool . !update(s, v, b))* ] < reset > true
+[ true* . exists s: ATPSignal, b: Bool . val(s!=BD) && update(s, 0, b) ] mu X . [!(reset || ertms_signal || exists s: ATPSignal, v: Nat, b: Bool . update(s, v, b))] (X && <true>true)

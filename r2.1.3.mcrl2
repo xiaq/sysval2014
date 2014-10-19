@@ -1,1 +1,11 @@
-[true* . atp_mode(Tolerating) . (forall m: ATPMode. !atp_mode(m))* . exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && (!((v>vm(s)+v) && (b==false))|| v<= vm(s))) && update(s, v, b) . forall m: ATPMode. (bell || atp_mode(m))] false
+[
+% tolerating mode
+true* .  atp_mode(Tolerating) .
+% no timeout2, ertms_signal, update that satisfies 2.1.1 or 2.1.2 or atp_mode happens
+(!(timeout2 || ertms_signal || ebrake || beacon_stop ||
+(exists s: ATPSignal, v: Nat, b: Bool . val(s != BD && v <= vu && ((v > vm(s)+dv && !b) || v <= vm(s))) && update(s, v, b)) ||
+(exists v: Nat, b: Bool . update(BD, v, b))
+))*
+]
+% no bell or atp_mode is possible
+[ bell || exists m: ATPMode . atp_mode(m) ] false

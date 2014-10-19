@@ -1,1 +1,1 @@
-forall v: Nat, b: Bool.val(v<=vu)=>([true*.update(BD,v,b)]mu X.([!atp_mode(Standby)]X && <true>true))
+forall v: Nat,s:ATPSignal,b: Bool.val((v<=vu)&&(s==BD))=>([true*.update(s,v,b)]mu X.([!atp_mode(Standby)]X && <true>true))
