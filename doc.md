@@ -148,11 +148,11 @@ The exact relationships between the modes are specified in the requirements.
 
         1.  If $v \le vm(s)$, ATP enters \Normal{} mode.
 
-        1.  Otherwise, as long as no more \act{update} happens, no \act{bell} happens and no mode change happens.
+        <!-- 1.  Otherwise, as long as no \act{timeout2}, \act{ertms-signal} or \act{update} happens, no \act{bell} happens and no mode change happens. -->
 
     1.  When \act{timeout2} happens, it enters \Normal{} mode.
 
-    1.  When none of \act{timeout2}, \act{update} or \act{ertms-signal} happens, no mode change happens.
+    1.  When none of \act{timeout2}, \act{ertms-signal} or \act{update} happens, no mode change happens.
 
 1.  When ATP is in \Ringing{} mode, and \act{timeout1} and \act{update}$(s, v, b)$ happens:
 
@@ -168,9 +168,9 @@ The exact relationships between the modes are specified in the requirements.
 
 1.  Whenever \act{update}$(\text{BD}, v, b)$ happens, ATP enters \Standby{} mode.
 
-1.  When $v = 0$, \act{reset} is allowed.
+1.  After an \act{update}$(s, v, b)$ where $s \neq \text{BD}$ and $v = 0$, as long as no \act{update} or \act{ertms-signal} happens, \act{reset} will always be eventually possible.
 
-1.  When $v > 0$, \act{reset} is not allowed.
+1.  After an \act{update}$(s, v, b)$ where $v > 0$, as long as no \act{update} happens, \act{reset} is never allowed.
 
 1.  The system is free of deadlocks.
 
