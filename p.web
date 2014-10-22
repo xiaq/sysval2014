@@ -76,7 +76,8 @@ proc
             ((s == BD) -> (s_atp_standby . G(v, false, m)) <>
               (m == Standby) -> s_atp_wakeup . G(v, false, m) <>
                 (s_update(s, v, b) . G(v, false, m)))) +
-    sum m: ATPMode . r_atp_mode(m) . atp_mode(m) . G(v, i, m) +
+    sum m: ATPMode . (m != Ringed) -> r_atp_mode(m) . atp_mode(m) . G(v, i, m) +
+    r_atp_mode(Ringed) . G(v, i, Ringed) +
     r_ebrake . ebrake . G(v, i, Dead) +
     r_bell . bell . G(v, i, m) +
     r_done . G(v, true, m);
@@ -84,8 +85,6 @@ proc
   A(m: ATPMode) =
     (r_reset + r_atp_standby) .  AM(Standby) +
     r_atp_wakeup . ((m == Standby) -> AM(Normal) <> s_done . A(m)) +
-    r_timeout2 . ((m == Tolerating) -> AM(Normal) <> s_done . A(m)) +
-    r_timeout1 . s_done . ((m == Ringing) -> A(Ringed) <> A(m)) +
     (m == Dead) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
         r_update(s, v, b) . s_done . A(m)) +
@@ -96,11 +95,13 @@ proc
           s_bell . s_bell . s_bell . AM(Tolerating) <>
         s_done . A(m))) +
     (m == Tolerating) -> (
+      r_timeout2 . AM(Normal) +
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
         (!b && v > vm(s) + dv) -> s_bell . AM(Ringing) <>
         (v <= vm(s)) -> AM(Normal) <>
         s_done . A(m))) +
     (m == Ringing) -> (
+      r_timeout1 . AM(Ringed) +
       sum s: ATPSignal . sum v: Nat . sum b: Bool . (
         r_update(s, v, b) . s_done . A(m))) +
     (m == Ringed) -> (
