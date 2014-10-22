@@ -1,12 +1,15 @@
-# symlink
-p.txt
-
 # generated from mcrl2
 *.lps
+*.lps.txt
 *.lts
+*.trc
 
 # generated from md
 *.tex
+
+# other generated files
+p.mcrl2
+p.md
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
