@@ -1,0 +1,5 @@
+#!/bin/sh
+for x in r*.mcrl2; do
+    echo "Validating $x"
+    ./validate $x
+done

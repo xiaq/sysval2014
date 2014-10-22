@@ -2,7 +2,7 @@
 % tolerating mode
 true* . atp_mode(Tolerating) .  (forall m: ATPMode. !atp_mode(m))* .
 % an update where v <= vm(s) happens
-exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && v <= du && v <= vm(s)) && update(s, v, b)
+exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && v <= vm(s)) && update(s, v, b)
 ]
 % eventually atp_mode(Normal) happens
 mu X.([!atp_mode(Normal)]X && <true>true)

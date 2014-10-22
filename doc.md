@@ -1,3 +1,5 @@
+<!-- TODO 1: Add Introduction here -->
+
 # Global Requirements
 
 \newcommand{\Normal}{\textsc{Normal}\xspace}
@@ -50,6 +52,8 @@ The exact relationships between the modes are specified in the requirements.
 
 ## Requirements
 
+<!-- TODO 2: Match the structure of the "Global Requirements (In Terms of External Actions)" section -->
+
 1.  When ATP is in \Normal{} mode:
 
     1.  If the brake is off, and the current speed is higher than the maximum speed allowed on the antenna (known as $vm$ afterwards), ATP requests ERTMS to ring the bell and enters \Ringing{} mode.
@@ -89,6 +93,8 @@ The exact relationships between the modes are specified in the requirements.
 1.  The system is free of deadlocks.
 
 # External Actions
+
+<!-- TODO 3: Document the rationale behind a single "update" action instead of three actions; document the v parameter (divided by 10 and capped at 15) -->
 
 \act{update}$(s, v, b)$: ATP is informed of the current ATP signal, the current speed and the current brake status. This action always happens when an ATP signal is received on the antenna.
 
@@ -132,17 +138,19 @@ The exact relationships between the modes are specified in the requirements.
 
 ## Requirements
 
-1.  When ATP is in \Normal{} mode and \act{update}$(s, v, b)$ happens:
+1.  When ATP is in \Normal{} mode:
 
-    1.  If $v > vm(s)$ and $b = \false$, ATP initiates \act{bell} and enters \Ringing{} mode.
+    1.  When \act{update}$(s, v, b)$, where $s \neq \text{BD}$, happens:
 
-    1.  If $vm(s) < v < vm(s) + \Delta v$, ATP intiates three \act{bell} actions and enter \Tolerating{} mode.
+        1.  If $v > vm(s)$ and $b = \false$, ATP initiates \act{bell} and enters \Ringing{} mode.
 
-    1.  Otherwise, as long as no more \act{update} happens, no \act{bell} happens and no mode change happens.
+        1.  If $vm(s) < v < vm(s) + \Delta v$, ATP intiates three \act{bell} actions and enter \Tolerating{} mode.
+
+    1.  As long as neither of \act{ertms-signal} or \act{update} happens, no \act{bell} happens and no mode change happens.
 
 1.  When ATP is in \Tolerating{} mode:
 
-    1. When \act{update}$(s, v, b)$ happens:
+    1. When \act{update}$(s, v, b)$, where $s \neq \text{BD}$, happens:
 
         1.  If $v > vm(s) + \Delta v$ and $b = \false{}$, ATP initiates \act{bell} and enters \Ringing{} mode.
 
@@ -152,9 +160,9 @@ The exact relationships between the modes are specified in the requirements.
 
     1.  When \act{timeout2} happens, it enters \Normal{} mode.
 
-    1.  When none of \act{timeout2}, \act{ertms-signal} or \act{update} happens, no mode change happens.
+    1.  As long as none of \act{timeout2}, \act{ertms-signal} or \act{update} happens, no mode change happens.
 
-1.  When ATP is in \Ringing{} mode, and \act{timeout1} and \act{update}$(s, v, b)$ happens:
+1.  When ATP is in \Ringing{} mode, and \act{timeout1} and \act{update}$(s, v, b)$, where $s \neq \text{BD}$, happen:
 
     1.  If $b = \true{}$, ATP enters \Normal{} mode.
 
@@ -176,6 +184,10 @@ The exact relationships between the modes are specified in the requirements.
 
 # Process definition
 
+<!-- TODO 4: Split the mcrl2 source apart and document the internal actions and the design of the parellel components -->
+
 \verbinput{p.mcrl2}
+
+<!-- TODO 5: Include and document all MCF sources -->
 
 <!-- vi: se tw=0 ai: -->

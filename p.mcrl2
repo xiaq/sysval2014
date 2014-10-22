@@ -11,7 +11,7 @@ eqn vm(S4) = 4; vm(S6) = 6; vm(S8) = 8; vm(S13) = 13;
 act
   %% External       Internal
   timeout1,
-  timeout2,
+  timeout2,         s_timeout2, r_timeout2, sr_timeout2,
   beacon_stop,      s_beacon_stop, r_beacon_stop, sr_beacon_stop,
   bell,             s_bell, r_bell, sr_bell,
   ebrake,           s_ebrake, r_ebrake, sr_ebrake,
@@ -32,6 +32,7 @@ proc
       (m != Dead) -> ertms_signal . s_atp_standby . G(v, false, Standby) +
       (v == 0 && m == Dead) -> reset . s_reset . G(v, false, Standby) +
       (m == Normal) -> beacon_stop . s_beacon_stop . G(v, false, m) +
+      (m == Normal) -> timeout2 . s_timeout2 . G(v, false, m) +
       sum s: ATPSignal .
         sum v: Nat . (v <= vu) ->
           sum b: Bool . update(s, v, b) . ertms_standby .
@@ -47,6 +48,7 @@ proc
   A(m: ATPMode) =
     (r_reset + r_atp_standby) .  ADM(Standby) +
     r_atp_wakeup . ((m == Standby) -> ADM(Normal) <> s_done . A(m)) +
+    r_timeout2 . ((m == Tolerating) -> ADM(Normal) <> s_done . A(m)) +
     (m == Dead) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
         r_update(s, v, b) . s_done . A(m)) +
@@ -57,7 +59,6 @@ proc
           s_bell . s_bell . s_bell . ADM(Tolerating) <>
         s_done . A(m))) +
     (m == Tolerating) -> (
-      timeout2 . AM(Normal) +
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
         (!b && v > vm(s) + dv) -> s_bell . ADM(Ringing) <>
         (v <= vm(s)) -> ADM(Normal) <>
@@ -82,6 +83,7 @@ proc
 init
   hide(
     {
+      sr_timeout2,
       sr_beacon_stop,
       sr_bell,
       sr_ebrake,
@@ -105,6 +107,7 @@ init
         atp_mode,
         update,
 
+        sr_timeout2,
         sr_beacon_stop,
         sr_bell,
         sr_ebrake,
@@ -116,6 +119,7 @@ init
       },
       comm(
         {
+          s_timeout2|r_timeout2 -> sr_timeout2,
           s_beacon_stop|r_beacon_stop -> sr_beacon_stop,
           s_bell|r_bell -> sr_bell,
           s_ebrake|r_ebrake -> sr_ebrake,
