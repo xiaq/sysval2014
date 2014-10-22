@@ -13,10 +13,10 @@
 	lps2lts -vD $< $@
 
 p.mcrl2: p.web
-	python2 poorweb.py $< /dev/null $@
+	./poorweb.py $< /dev/null $@
 
 p.md: p.web
-	python2 poorweb.py $< $@ /dev/null
+	./poorweb.py $< $@ /dev/null
 
 p.tex: p.md
 	pandoc -o $@ $<

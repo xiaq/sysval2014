@@ -1,6 +1,14 @@
-"""
-poorweb is a poor man's literate programming tool.
-"""
+#!/bin/sh
+''':'
+pythons='python2.7 python2 python'
+for bin in $pythons; do
+    if type $bin >/dev/null; then
+        exec $bin "$0" "$@"
+    fi
+done
+echo "None of the following executable found: $pythons"
+exit 1
+#'''
 
 import sys
 
