@@ -12,4 +12,18 @@
 %.lts: %.lps
 	lps2lts -vD $< $@
 
-doc.pdf: p.mcrl2
+p.mcrl2: p.web
+	python2 poorweb.py $< /dev/null $@
+
+p.md: p.web
+	python2 poorweb.py $< $@ /dev/null
+
+p.tex: p.md
+	pandoc -o $@ $<
+
+p.mcrl2.tex: p.mcrl2
+	echo '\begin{verbatim}' > $@
+	cat $< >> $@
+	echo '\end{verbatim}' >> $@
+
+doc.pdf: p.mcrl2.tex p.tex
