@@ -4,7 +4,7 @@ This section presents an annotated version of the complete mCRL2 definition of t
 
 ## Sorts and maps
 
-We first define two custom sorts, `ATPSignal` and `ATPMode`, whose meaning has been covered before. There is also a special “internal” ATP mode, `Ringed`, whose meaning will be explained in \autoref{subsec:proc}.
+We first define two custom sorts, ATPSignal and ATPMode, whose meaning has been covered before. There is also a special “internal” ATP mode, \mode{Ringed}, whose meaning will be explained in \autoref{subsec:proc}.
 
 >>
 sort
@@ -12,14 +12,14 @@ sort
   ATPMode = struct Normal | Ringing | Ringed | Tolerating | Standby | Dead;
 <<
 
-We then define a map `vm` to maps a given ATP signal to the speed limit. The map from `BD` is intentionally left out.
+We then define the map $vm$ to maps a given ATP signal to the speed limit. The map from BD is intentionally left out.
 
 >>
 map vm: ATPSignal -> Nat;
 eqn vm(S4) = 4; vm(S6) = 6; vm(S8) = 8; vm(S13) = 13;
 <<
 
-We also define two constants `vu`, the maximimal speed allowed, and `dv`, the $\Delta v$ used for tolerating mode, in the form of maps with no parameters.
+We also define two constants $vu$, the maximimal speed allowed, and $dv$, the $\Delta v$ used for tolerating mode, in the form of maps with no parameters.
 
 >>
 map vu, dv: Nat;
@@ -28,14 +28,22 @@ eqn vu = 15; dv = 1;
 
 ## Actions
 
-We now proceed to define the external and internal actions. The external actions have been described above. Most of the time, for an external actions `a`, three internal actions `s_a` (send), `r_a` (receive) and `sr_a` (send and receive) are created. This reflects the fact that most actions are routed via G-ATP into either ATP++ or Beacon Stopper.
+We now proceed to define the external and internal actions. The external actions have been described above. For each external actions \act{a}, three internal actions \act{s-a} (send), \act{r-a} (receive) and \act{sr-a} (send and receive) are created. This reflects the fact that the ATP++ and Beacon Stopper components don't interact directly with the external world and all messages are routed via G-ATP by internal communication.
 
-There are some three groups of internal-only actions, namely `atp_standby`, `atp_wakeup` and `done`. To simplify the logics of mode transitioning, G-ATP rewrites `ertms_signal` and `update(BD, v, b)` into an `atp_standby` message before passing it to ATP++. Similarly, when ATP is in standby mode, it rewrites any `update(s, v, b)` (where `s != BD`) into an `atp_wakeup` message. The latter rule has an unpleasant consequence, namely that the first `update` message received when ATP is in standby mode only wakes up ATP++ and is then dropped. However, since we assume that `update` happens often enough, this will not pose any real problems. The `done` message is used to synchronize G-ATP with the other two components and will be explained later.
+There are also three groups of internal-only actions:
+
+1.  \act{atp-standby}: To simplify the logics of mode transitioning, G-ATP rewrites \act{ertms-signal} and \act{update}$(\text{BD}, v, b)$ into an \act{atp-standby} message before passing it to ATP++.
+
+1.  \act{atp-wakeup}: Similarly, when ATP is in \mode{Standby}, G-ATP rewrites any \act{update}$(s, v, b)$ (where $s \neq \text{BD}$) into an \act{atp-wakeup} message. The latter rewriting has the consequence that the first \act{update} message received when ATP is in standby mode only wakes up ATP++ and is then dropped. However, since we assume that \act{update} happens often enough, this will not pose any real problems.
+
+2.  \act{done}: This message is used to synchronize G-ATP with the other two components and will be explained later.
+
+mCRL2 does not support the use of dashes inside identifiers. Underscores are used in the code instead.
 
 >>
 act
   %% External       Internal
-  timeout1,
+  timeout1,         s_timeout1, r_timeout1, sr_timeout1,
   timeout2,         s_timeout2, r_timeout2, sr_timeout2,
   beacon_stop,      s_beacon_stop, r_beacon_stop, sr_beacon_stop,
   bell,             s_bell, r_bell, sr_bell,
@@ -46,7 +54,7 @@ act
                     s_done, r_done, sr_done,
   ertms_signal,
   ertms_standby;
-  atp_mode: ATPMode;
+  atp_mode,         s_atp_mode, r_atp_mode, sr_atp_mode: ATPMode;
   update,           s_update, r_update, sr_update: ATPSignal # Nat # Bool;
 <<
 
@@ -55,58 +63,53 @@ act
 
 >>
 proc
-  %% Generic ATP
-  %% m may be Standby, Normal or Dead.
   G(v: Nat, i: Bool, m: ATPMode) =
     i -> (
-      (m != Dead) -> ertms_signal . s_atp_standby . G(v, false, Standby) +
-      (v == 0 && m == Dead) -> reset . s_reset . G(v, false, Standby) +
-      (m == Normal) -> beacon_stop . s_beacon_stop . G(v, false, m) +
-      (m == Normal) -> timeout2 . s_timeout2 . G(v, false, m) +
+      (m != Dead) -> ertms_signal . s_atp_standby . G(v, false, m) +
+      (v == 0 && m == Dead) -> reset . s_reset . G(v, false, m) +
+      (m != Dead && m != Standby) -> beacon_stop . s_beacon_stop . G(v, false, m) +
+      (m == Ringing) -> timeout1 . s_timeout1 . G(v, false, m) +
+      (m == Tolerating) -> timeout2 . s_timeout2 . G(v, false, m) +
       sum s: ATPSignal .
         sum v: Nat . (v <= vu) ->
           sum b: Bool . update(s, v, b) . ertms_standby .
-            ((s == BD) -> (s_atp_standby . G(v, false, Standby)) <>
-              (m == Standby) -> s_atp_wakeup . G(v, false, Normal) <>
-                (s_update(s, v, b) . G(v, false, Normal)))) +
+            ((s == BD) -> (s_atp_standby . G(v, false, m)) <>
+              (m == Standby) -> s_atp_wakeup . G(v, false, m) <>
+                (s_update(s, v, b) . G(v, false, m)))) +
+    sum m: ATPMode . r_atp_mode(m) . atp_mode(m) . G(v, i, m) +
     r_ebrake . ebrake . G(v, i, Dead) +
     r_bell . bell . G(v, i, m) +
     r_done . G(v, true, m);
 
-  %% ATP++
-  %% m may be Dead, Normal, Tolerating, Ringing, Ringed or Standby.
   A(m: ATPMode) =
-    (r_reset + r_atp_standby) .  ADM(Standby) +
-    r_atp_wakeup . ((m == Standby) -> ADM(Normal) <> s_done . A(m)) +
-    r_timeout2 . ((m == Tolerating) -> ADM(Normal) <> s_done . A(m)) +
+    (r_reset + r_atp_standby) .  AM(Standby) +
+    r_atp_wakeup . ((m == Standby) -> AM(Normal) <> s_done . A(m)) +
+    r_timeout2 . ((m == Tolerating) -> AM(Normal) <> s_done . A(m)) +
+    r_timeout1 . s_done . ((m == Ringing) -> A(Ringed) <> A(m)) +
     (m == Dead) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
         r_update(s, v, b) . s_done . A(m)) +
     (m == Normal) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
-        (!b && v > vm(s)) -> s_bell . ADM(Ringing) <>
+        (!b && v > vm(s)) -> s_bell . AM(Ringing) <>
         (b && v > vm(s) && v <= vm(s) + dv) ->
-          s_bell . s_bell . s_bell . ADM(Tolerating) <>
+          s_bell . s_bell . s_bell . AM(Tolerating) <>
         s_done . A(m))) +
     (m == Tolerating) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
-        (!b && v > vm(s) + dv) -> s_bell . ADM(Ringing) <>
-        (v <= vm(s)) -> ADM(Normal) <>
+        (!b && v > vm(s) + dv) -> s_bell . AM(Ringing) <>
+        (v <= vm(s)) -> AM(Normal) <>
         s_done . A(m))) +
     (m == Ringing) -> (
-      timeout1 . A(Ringed) +
       sum s: ATPSignal . sum v: Nat . sum b: Bool . (
         r_update(s, v, b) . s_done . A(m))) +
     (m == Ringed) -> (
       sum s: ATPSignal . sum v: Nat . sum b: Bool . (
         r_update(s, v, b) . (
-          (b -> ADM(Normal) <> (s_ebrake . ADM(Dead))))));
+          (b -> AM(Normal) <> (s_ebrake . AM(Dead))))));
 
-  AM(m: ATPMode) = atp_mode(m) . A(m);
+  AM(m: ATPMode) = s_atp_mode(m) . s_done . A(m);
 
-  ADM(m: ATPMode) = atp_mode(m) . s_done . A(m);
-
-  %% Beacon Stopper
   B =
     r_beacon_stop . s_ebrake . s_done . B;
 <<
@@ -119,6 +122,7 @@ The init section is pretty conventional. We rewrite all send-receive action pair
 init
   hide(
     {
+      sr_timeout1,
       sr_timeout2,
       sr_beacon_stop,
       sr_bell,
@@ -127,6 +131,7 @@ init
       sr_atp_wakeup,
       sr_atp_standby,
       sr_done,
+      sr_atp_mode,
       sr_update
     },
     allow(
@@ -142,6 +147,7 @@ init
         atp_mode,
         update,
 
+        sr_timeout1,
         sr_timeout2,
         sr_beacon_stop,
         sr_bell,
@@ -150,10 +156,12 @@ init
         sr_atp_wakeup,
         sr_atp_standby,
         sr_done,
+        sr_atp_mode,
         sr_update
       },
       comm(
         {
+          s_timeout1|r_timeout1 -> sr_timeout1,
           s_timeout2|r_timeout2 -> sr_timeout2,
           s_beacon_stop|r_beacon_stop -> sr_beacon_stop,
           s_bell|r_bell -> sr_bell,
@@ -162,6 +170,7 @@ init
           s_atp_wakeup|r_atp_wakeup -> sr_atp_wakeup,
           s_atp_standby|r_atp_standby -> sr_atp_standby,
           s_done|r_done -> sr_done,
+          s_atp_mode|r_atp_mode -> sr_atp_mode,
           s_update|r_update -> sr_update
         },
         G(0, true, Standby) || A(Standby) || B
