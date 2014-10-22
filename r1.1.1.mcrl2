@@ -1,0 +1,14 @@
+[
+% normal mode
+true* . atp_mode(Normal) . (forall m: ATPMode. !atp_mode(m))* . 
+% an update where v>vm(s) && !b happens
+exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && vm(s)< v && v<= vu && !b) && update(s, v, b)
+] 
+% eventually bell heppens
+((mu X. [!bell]X && <true>true) &&
+% eventually atp_mode(Ringing) happens
+(mu Y. [!atp_mode(Ringing)]Y && <true>true))
+
+%[true* . atp_mode(Normal) . (forall m: ATPMode. !atp_mode(m))* . exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && vm(s)< v && v<= vu && !b) && update(s, v, b)] mu X.([!bell]X && <true>true) mu Y. ([!atp_mode(Ringing)]Y && <true>true)
+
+
