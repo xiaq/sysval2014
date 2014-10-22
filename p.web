@@ -65,8 +65,8 @@ act
 proc
   G(v: Nat, i: Bool, m: ATPMode) =
     i -> (
+      (v == 0) -> reset . s_reset . G(v, false, m) +
       (m != Dead) -> ertms_signal . s_atp_standby . G(v, false, m) +
-      (v == 0 && m == Dead) -> reset . s_reset . G(v, false, m) +
       (m != Dead && m != Standby) -> beacon_stop . s_beacon_stop . G(v, false, m) +
       (m == Ringing) -> timeout1 . s_timeout1 . G(v, false, m) +
       (m == Tolerating) -> timeout2 . s_timeout2 . G(v, false, m) +
