@@ -1,8 +1,8 @@
 #!/bin/bash
 children=
-for x in r*.mcrl2; do
+for x in *.mcf; do
     ( printf '%-15s: %s\n' "$x" \
-        "$(./validate $x | sed 's/false/[31mfalse[m/')" ) &
+        "$(./validate $x 2>&1 | sed 's/false/[31mfalse[m/')" ) &
     children="$children $!"
 done
 wait $children

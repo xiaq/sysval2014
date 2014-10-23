@@ -1,8 +1,0 @@
-[
-% tolerating mode
-true* . atp_mode(Tolerating) . (forall m: ATPMode . !atp_mode(m))* .
-% timeout2 happens
-timeout2
-]
-% eventually atp_mode(Normal) happens
-mu X. ([!atp_mode(Normal)]X && <true>true)

@@ -24,9 +24,9 @@
      borderopacity="1.0"
      inkscape:pageopacity="0.0"
      inkscape:pageshadow="2"
-     inkscape:zoom="0.98994949"
-     inkscape:cx="31.965226"
-     inkscape:cy="37.964947"
+     inkscape:zoom="1.979899"
+     inkscape:cx="173.38658"
+     inkscape:cy="118.77715"
      inkscape:document-units="px"
      inkscape:current-layer="layer1"
      showgrid="false"
@@ -47,7 +47,7 @@
         <dc:format>image/svg+xml</dc:format>
         <dc:type
            rdf:resource="http://purl.org/dc/dcmitype/StillImage" />
-        <dc:title></dc:title>
+        <dc:title />
       </cc:Work>
     </rdf:RDF>
   </metadata>
@@ -147,7 +147,7 @@
            height="20.203049"
            x="126.26907"
            y="232.11832" /></flowRegion><flowPara
-         id="flowPara4514">NORMAL</flowPara></flowRoot>    <flowRoot
+         id="flowPara4514">Normal</flowPara></flowRoot>    <flowRoot
        transform="translate(72,24)"
        style="font-size:14px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Linux Libertine;-inkscape-font-specification:Linux Libertine"
        id="flowRoot4516"
@@ -158,15 +158,14 @@
            height="41.41626"
            width="39.395958"
            id="rect4520" /></flowRegion><flowPara
-         id="flowPara4522">RING-</flowPara><flowPara
-         id="flowPara4524">ING</flowPara></flowRoot>    <path
+         id="flowPara4524">Ring-ing</flowPara></flowRoot>    <path
        style="fill:none;stroke:#000000;stroke-width:1;stroke-linecap:butt;stroke-linejoin:miter;stroke-miterlimit:4;stroke-opacity:1;stroke-dasharray:2, 1;stroke-dashoffset:0"
        d="m 269.9899,51.30101 0,193.94929"
        id="path4526"
        inkscape:connector-curvature="0"
        sodipodi:nodetypes="cc" />
     <flowRoot
-       transform="translate(96,10)"
+       transform="translate(100,10)"
        style="font-size:14px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Linux Libertine;-inkscape-font-specification:Linux Libertine"
        id="flowRoot4528"
        xml:space="preserve"><flowRegion
@@ -176,18 +175,18 @@
            height="20.203049"
            width="60.609154"
            id="rect4532" /></flowRegion><flowPara
-         id="flowPara4534">NORMAL</flowPara></flowRoot>    <flowRoot
+         id="flowPara4534">Normal</flowPara></flowRoot>    <flowRoot
        xml:space="preserve"
        id="flowRoot4536"
        style="font-size:14px;font-style:normal;font-variant:normal;font-weight:normal;font-stretch:normal;text-align:start;line-height:125%;letter-spacing:0px;word-spacing:0px;writing-mode:lr-tb;text-anchor:start;fill:#000000;fill-opacity:1;stroke:none;font-family:Linux Libertine;-inkscape-font-specification:Linux Libertine"
-       transform="translate(150,24)"><flowRegion
+       transform="translate(152,24)"><flowRegion
          id="flowRegion4538"><rect
            id="rect4540"
            width="112.12694"
            height="38.385796"
            x="126.26907"
            y="232.11832" /></flowRegion><flowPara
-         id="flowPara4542">TOLERATING</flowPara></flowRoot>    <path
+         id="flowPara4542">Tolerating</flowPara></flowRoot>    <path
        sodipodi:nodetypes="cc"
        inkscape:connector-curvature="0"
        id="path4544"
@@ -204,5 +203,5 @@
            height="20.203049"
            x="126.26907"
            y="232.11832" /></flowRegion><flowPara
-         id="flowPara4552">NORMAL</flowPara></flowRoot>  </g>
+         id="flowPara4552">Normal</flowPara></flowRoot>  </g>
 </svg>

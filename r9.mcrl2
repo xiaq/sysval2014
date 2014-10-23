@@ -1,1 +1,0 @@
-[ true* . (exists s: ATPSignal, v: Nat, b: Bool . val(v >= 1 && v <= vu) && update(s, v, b)) . (forall s: ATPSignal, v: Nat, b: Bool . !update(s, v, b))* ] [ reset ] false

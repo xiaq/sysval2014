@@ -24,3 +24,11 @@ p.mcrl2.tex: p.mcrl2
 	echo '\end{verbatim}' >> $@
 
 doc.pdf: p.mcrl2.tex
+
+mcfs: doc.web
+	./poorweb.py $< /dev/null /dev/null
+
+validate-all: mcfs
+	./validate-all
+
+.PHONY: mcfs validate-all

@@ -1,5 +1,9 @@
+% Design of the ATP Control System
+% XIAO Qi (0925490), XUE Bin (0925548), WANG Fengjun (0925350), ZHANG Hao
+% 23 Oct 2014
+
 \newcommand{\mode}[1]{\textsf{#1}\xspace}
-\newcommand{\act}[1]{\textsf{#1}\xspace}
+\newcommand{\act}[1]{\textsf{#1}}
 
 \newcommand{\true}{\text{true}\xspace}
 \newcommand{\false}{\text{false}\xspace}
@@ -60,21 +64,25 @@ The exact relationships between the modes are specified in the requirements.
 
 1.  When ATP is in \mode{Normal} mode:
 
-    1.  If the brake is off, and the current speed is higher than the maximum speed allowed on the antenna (known as $vm$ afterwards), ATP requests ERTMS to ring the bell and enters \mode{Ringing} mode.
+    1.  When it is informed of the brake status and current speed:
 
-    1.  If the brake is on, and current speed is between $vm$ and $vm + \Delta v$, ATP requests ERTMS to ring the bell three times and enter \mode{Tolerating} mode.
+        1.  If the brake is off, and the current speed is higher than the maximum speed allowed on the antenna (known as $vm$ afterwards), ATP requests ERTMS to ring the bell and enters \mode{Ringing} mode.
 
-    1.  Otherwise, no bell is ringed and ATP stays in this mode.
+        1.  If the brake is on, and current speed is between $vm$ and $vm + \Delta v$, ATP requests ERTMS to ring the bell three times and enter \mode{Tolerating} mode.
+
+    1.  As long as no ERTMS signal is detected, and speed and brake status does not change, no bell is ringed and ATP stays in this mode.
 
 1.  When ATP is in \mode{Tolerating} mode:
 
-    1.  If the brake is off, and the current speed is higher than $vm + \Delta v$, ATP requests ERTMS to ring the bell and enters \mode{Ringing} mode.
+    1.  When it is informed of the brake status and current speed:
 
-    1.  If the current speed is lower than $vm$, ATP enters \mode{Normal} mode.
+        1.  If the brake is off, and the current speed is higher than $vm + \Delta v$, ATP requests ERTMS to ring the bell and enters \mode{Ringing} mode.
 
-    1.  ATP always enters \mode{Normal} after a specified amount of time, $\Delta t$.
+        1.  If the current speed is lower than $vm$, ATP enters \mode{Normal} mode.
 
-    1.  If the current speed is higher than $vm$, ATP will stay in \mode{Tolerating} mode within $\Delta t$.
+    1.  ATP always enters \mode{Normal} after a certain amount of time $\Delta t$.
+
+    1.  As long as no ERTMS signal is detected, and the speed and brake status does not change, ATP will stay in \mode{Tolerating} mode within $\Delta t$.
 
 1.  Three seconds after ATP enters \mode{Ringing} mode:
 
@@ -98,9 +106,25 @@ The exact relationships between the modes are specified in the requirements.
 
 # External Actions
 
-<!-- TODO 3: Document the rationale behind a single "update" action instead of three actions; document the v parameter (divided by 10 and capped at 15) -->
+\act{update}$(s: \text{ATPSignal}, v: \mathbb{N}, b: \mathbb{B})$: ATP is informed of the current ATP signal, the current speed and the current brake status. This action always happens when an ATP signal is received on the antenna.
 
-\act{update}$(s, v, b)$: ATP is informed of the current ATP signal, the current speed and the current brake status. This action always happens when an ATP signal is received on the antenna.
+Notes about the \act{update} action:
+
+1.  This action is an abstraction and not very realistic. In the real world, it is more likely that the three types of information come from different channels; namely, there can be an \act{atp-signal}$(s)$ action where ATP reads a signal from the antenna, a \act{speed}$(v)$ action where ERTMS informs ATP about the current speed of the train, and a \act{brake-status}$(b)$ action where ERTMS informs ATP about the current brake status.
+
+    However, packing these three types of information into a single action greatly simplifies the process design and validation. For instance, should there be three actions, we would need to consider their order of arrival when validating the model, which would make the modal formulas unncessarily verbose.
+
+    In the real world where there be likely three actions as described above, this action can be simulated in a straightforward way by adding the following component:
+
+    \begin{verbatim}
+proc U(v: Nat, b: Bool) =
+  speed(v) . U(v, b) + brake_status(b) . U(v, b) +
+  atp_signal(s) . update(s, v, b) . U(v, b);
+    \end{verbatim}
+
+2.  To limit the size of the state space, the speed parameter $v$ is not the “real” speed but rather divided by 10, rounded up, and capped at 15 -- $v = \min(\lceil v_r/10 \rceil, 15)$ where $v_r$ is the real speed. This simplification does not cause any loss of functionality.
+
+\act{atp-mode}$(m: \text{ATPMode})$: ATP announces its new mode. The physical realization can be, for instance, an LED display that shows the name of the mode.
 
 \act{ertms-signal}: ERTMS informs ATP that ERTMS signal is detected and therefore ERTMS will be in charge.
 
@@ -112,17 +136,11 @@ The exact relationships between the modes are specified in the requirements.
 
 \act{ertms-standby}: ATP requests ERTMS to enter standby mode because ATP will be in charge.
 
-\act{timer1}: ATP starts timer 1 which will go off in 3 seconds.
+\act{timeout1}: ATP has been in \mode{Ringing} mode for 3 seconds.
 
-\act{timeout1}: timer1 goes off.
-
-\act{timer2}: ATP starts timer 2 which will go off in 3 minutes.
-
-\act{timeout2}: timer2 goes off.
+\act{timeout2}: ATP has been in \mode{Tolerating} mode for $\Delta t$.
 
 \act{reset}: The driver resets the whole system so that the brake can be released.
-
-\act{atp-mode}$(m)$: ATP announces its new mode.
 
 # Global Requirements (In Terms of External Actions)
 
@@ -138,7 +156,7 @@ The exact relationships between the modes are specified in the requirements.
 
 ## Definition
 
-1.  The **mode** of the ATP system is defined to be the data in the last $\act{atp-mode}(m)$ action. When no such action has happened, ATP is in \mode{Standby} mode.
+1.  The **mode** of the ATP system is defined to be the data in the last $\act{atp-mode}(m)$ action. <!--When no such action has happened, ATP is in \mode{Standby} mode.-->
 
 ## Requirements
 
@@ -148,7 +166,7 @@ The exact relationships between the modes are specified in the requirements.
 
         1.  If $v > vm(s)$ and $b = \false$, ATP initiates \act{bell} and enters \mode{Ringing} mode.
 
-        1.  If $vm(s) < v < vm(s) + \Delta v$, ATP intiates three \act{bell} actions and enter \mode{Tolerating} mode.
+        1.  If $vm(s) < v \le vm(s) + \Delta v$ and $b = \true$, ATP intiates three \act{bell} actions and enter \mode{Tolerating} mode.
 
     1.  As long as neither of \act{ertms-signal} or \act{update} happens, no \act{bell} happens and no mode change happens.
 
@@ -166,7 +184,7 @@ The exact relationships between the modes are specified in the requirements.
 
     1.  As long as none of \act{timeout2}, \act{ertms-signal} or \act{update} happens, no mode change happens.
 
-1.  When ATP is in \mode{Ringing} mode, and \act{timeout1} and \act{update}$(s, v, b)$, where $s \neq \text{BD}$, happen:
+1.  When ATP is in \mode{Ringing} mode, and \act{timeout1} and \act{update}$(s, v, b)$, where $s \neq \text{BD}$, happens:
 
     1.  If $b = \true{}$, ATP enters \mode{Normal} mode.
 
@@ -176,7 +194,7 @@ The exact relationships between the modes are specified in the requirements.
 
 1.  When ATP is in \mode{Standby} mode, it will not initiate \act{bell} or \act{ebrake}.
 
-1.  When ATP is in \mode{Standby} mode and \act{update}$(s, v, b)$ happens, it intiates \act{ertms-standby}. If $s \neq \text{BD}$, it then enters \mode{Normal} mode.
+1.  When ATP is in \mode{Standby} mode and \act{update}$(s, v, b)$ happens, it intiates \act{ertms-standby}. If $s \neq \text{BD}$, it also enters \mode{Normal} mode.
 
 1.  Whenever \act{update}$(\text{BD}, v, b)$ happens, ATP enters \mode{Standby} mode.
 
@@ -191,6 +209,7 @@ The exact relationships between the modes are specified in the requirements.
 This section presents an annotated version of the complete mCRL2 definition of the process. For an unannotated version, see \autoref{sec:mcrl2}.
 
 ## Sorts and maps
+\label{subsec:sorts-and-maps}
 
 We first define two custom sorts, ATPSignal and ATPMode, whose meaning has been covered before. There is also a special “internal” ATP mode, \mode{Ringed}, whose meaning will be explained in \autoref{subsec:proc}.
 
@@ -216,7 +235,7 @@ eqn vu = 15; dv = 1;
 
 ## Actions
 
-We now proceed to define the external and internal actions. The external actions have been described above. For each external actions \act{a}, three internal actions \act{s-a} (send), \act{r-a} (receive) and \act{sr-a} (send and receive) are created. This reflects the fact that the ATP++ and Beacon Stopper components don't interact directly with the external world and all messages are routed via G-ATP by internal communication.
+We now proceed to define the external and internal actions. The external actions have been described above. For each external actions \act{a}, three internal actions \act{s-a} (send), \act{r-a} (receive) and \act{sr-a} (send and receive) are created. This reflects the fact that the ATP++ and Beacon Stopper components don't interact directly with the external world and all messages are routed via G-ATP by internal communication. A “message” is an informal name we give to a group of closely related actions like the just mentioned group of \act{a}, \act{s-a} and \act{r-a} actions.
 
 There are also three groups of internal-only actions:
 
@@ -225,6 +244,17 @@ There are also three groups of internal-only actions:
 1.  \act{atp-wakeup}: Similarly, when ATP is in \mode{Standby}, G-ATP rewrites any \act{update}$(s, v, b)$ (where $s \neq \text{BD}$) into an \act{atp-wakeup} message. The latter rewriting has the consequence that the first \act{update} message received when ATP is in standby mode only wakes up ATP++ and is then dropped. However, since we assume that \act{update} happens often enough, this will not pose any real problems.
 
 2.  \act{done}: This message is used to synchronize G-ATP with the other two components and will be explained later.
+
+An overview of the messages is presented in \ref{fig:messages}. All internal messages are realised with an \act{s-} action on the sending side, an \act{r-} action on the receiving side and an \act{sr-} action to capture the \act{s}-\act{r} multi-action.
+
+\begin{figure}[h]
+\begin{center}
+    \includegraphics[angle=-90,width=\linewidth]{figures/messages}
+    \caption{An overview of the conceptual flow of messsages}
+    \label{fig:messages}
+\end{center}
+\end{figure}
+
 
 mCRL2 does not support the use of dashes inside identifiers. Underscores are used in the code instead.
 
@@ -249,7 +279,15 @@ act
 ## Processes
 \label{subsec:proc}
 
-The G-ATP component
+### Generic ATP
+
+The role of G-ATP component is largely routing “messages”. The functionality of only allowing reset when speed is 0 is also implemented here, which is reflected in the $v$ parameter of the process.
+
+The $i$ (read “idle”) parameter, related to the \act{done} message, is used for synchronizing G-ATP with the other two components. When G-ATP is idle, it is allowed to receive messages from the external world. After routing the message to one of the other two components, it is no longer idle. When no longer idle it will only respond to internal messages until a \act{done} message is received. This synchronization is crucial for the system to be free of deadlocks. If G-ATP is always allowed to receive external messages, a message can arrive when ATP++ or Beacon Stopper is at halfway processing the last message and thus stuck in an intermediate state, likely resulting in a deadlock.
+
+The $m$ parameter keeps track of current ATP mode and is used to decide when certain external actions are allowed.
+
+The \mode{Ringed} mode is internal and thus not announced through an \act{atp-mode} action.
 
 >>
 proc
@@ -273,6 +311,12 @@ proc
     r_done . G(v, true, m);
 <<
 
+### ATP++
+
+The mode of ATP plays in central role in the implementation of ATP++. The \mode{Ringing} mode is implemented internally as two modes, \mode{Ringing} and \mode{Ringed}. This is needed so that intermediate actions between \act{r-timeout1} and \act{update} does not lead to a deadlock.
+
+The auxiliary process AM is defined to capture a recurring series of actions, namely announcing the new mode via \act{s-atp-mode}, concluding the processing procedure via \act{s-done} and then transiting to the mode just announced.
+
 >>
 proc
   A(m: ATPMode) =
@@ -282,37 +326,41 @@ proc
       sum s: ATPSignal . sum v: Nat . sum b: Bool .
         r_update(s, v, b) . s_done . A(m)) +
     (m == Normal) -> (
-      sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
-        (!b && v > vm(s)) -> s_bell . AM(Ringing) <>
-        (b && v > vm(s) && v <= vm(s) + dv) ->
-          s_bell . s_bell . s_bell . AM(Tolerating) <>
-        s_done . A(m))) +
+      sum s: ATPSignal . sum v: Nat . sum b: Bool .
+        r_update(s, v, b) . (
+          (!b && v > vm(s)) -> s_bell . AM(Ringing) <>
+          (b && v > vm(s) && v <= vm(s) + dv) ->
+            s_bell . s_bell . s_bell . AM(Tolerating) <>
+          s_done . A(m))) +
     (m == Tolerating) -> (
       r_timeout2 . AM(Normal) +
-      sum s: ATPSignal . sum v: Nat . sum b: Bool . r_update(s, v, b) . (
-        (!b && v > vm(s) + dv) -> s_bell . AM(Ringing) <>
-        (v <= vm(s)) -> AM(Normal) <>
-        s_done . A(m))) +
+      sum s: ATPSignal . sum v: Nat . sum b: Bool .
+        r_update(s, v, b) . (
+          (!b && v > vm(s) + dv) -> s_bell . AM(Ringing) <>
+          (v <= vm(s)) -> AM(Normal) <>
+          s_done . A(m))) +
     (m == Ringing) -> (
       r_timeout1 . AM(Ringed) +
-      sum s: ATPSignal . sum v: Nat . sum b: Bool . (
-        r_update(s, v, b) . s_done . A(m))) +
+      sum s: ATPSignal . sum v: Nat . sum b: Bool .
+        r_update(s, v, b) . s_done . A(m)) +
     (m == Ringed) -> (
-      sum s: ATPSignal . sum v: Nat . sum b: Bool . (
+      sum s: ATPSignal . sum v: Nat . sum b: Bool .
         r_update(s, v, b) . (
-          (b -> AM(Normal) <> (s_ebrake . AM(Dead))))));
+          (b -> AM(Normal) <> (s_ebrake . AM(Dead)))));
   AM(m: ATPMode) = s_atp_mode(m) . s_done . A(m);
 <<
 
+### Beacon Stopper
+
+The implementation of the beacon stopper is trivial.
+
 >>
-proc
-  B =
-    r_beacon_stop . s_ebrake . s_done . B;
+proc B = r_beacon_stop . s_ebrake . s_done . B;
 <<
 
 ## Init
 
-The init section is pretty conventional. We rewrite all send-receive action pairs into a single send-receive action, disallow the individual send and receive actions, before hiding all internal actions.
+In the `init` section, we rewrite all send-receive action pairs into a single send-receive action, disallow the individual send and receive actions, before hiding all internal actions.
 
 >>
 init
@@ -373,7 +421,220 @@ init
   )));
 <<
 
-<!-- TODO 5: Include and document all MCF sources -->
+# Modal formulas
+
+This section represents the modal formulas for the requirements written in the format of MCF. All MCF code is commented. The requirements are replicated with slight reformulations below.
+
+In formulating the modal formulas, “\act{a} happens” is interpreted as “\act{a} will eventually happen” since in virtually all cases there will be some intermediate transitions (often internal actions which are converted into $\tau$). Also, it is assumed that “\act{a} and \act{b} happens” does not imply the order of the two actions.
+
+1.1.1 When ATP is in \mode{Normal} mode, \act{update}$(s, v, b)$, where $s \neq \text{BD}$, $v > vm(s)$ and $b = \false$, happens, ATP initiates \act{bell} and enters \mode{Ringing} mode.
+
+>>1.1.1.mcf
+[
+% normal mode
+true* . atp_mode(Normal) . (forall m: ATPMode. !atp_mode(m))* .
+% an update where s!=BD && v>vm(s) && !b happens
+exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && vm(s)< v && v<= vu && !b) && update(s, v, b)
+]
+% eventually bell heppens
+((mu X. [!bell]X && <true>true) &&
+% eventually atp_mode(Ringing) happens
+(mu Y. [!atp_mode(Ringing)]Y && <true>true))
+<<
+
+1.1.2 When ATP is in \mode{Normal} mode, \act{update}$(s, v, b)$, where $s \neq \text{BD}$, $vm(s) < v \le vm(s) + \Delta v$ and $b = \true$, happens, ATP intiates three \act{bell} actions and enter \mode{Tolerating} mode.
+
+>>1.1.2.mcf
+[
+% Normal mode
+true* . atp_mode(Normal) . (forall m: ATPMode. !atp_mode(m))* .
+% an update where s!=BD && vm(s)< v <= vm(s)+dv happens
+exists s: ATPSignal, v: Nat. val( s!= BD && v<vu &&  v<= vm(s)+dv && vm(s)<v) && update(s, v, true)
+]
+% eventually bell heppens three times
+(mu X (n:Nat=0). ([bell]X(n+1) && [!bell]X(n) && <true>true || val(n==3)) &&
+% eventualy atp_mode(Tolerating) happens
+mu Y.([!atp_mode(Tolerating)]Y && <true>true))
+<<
+
+1.2 When ATP is in \mode{Normal} mode, as long as neither of \act{ertms-signal} or \act{update} happens, no \act{bell} happens and no mode change happens.
+
+>>1.2.mcf
+[
+% Normal mode
+true* . atp_mode(Normal) .
+% no more update, ertms signal happens or reset
+(!(ertms_signal || exists s: ATPSignal, v: Nat, b: Bool. update(s, v, b) || reset))*
+]
+% no bell or atp_mode is possible
+[((exists m: ATPMode. (atp_mode(m))) || bell)]false
+<<
+
+2.1.1 When ATP is in \mode{Tolerating} mode and \act{update}$(s, v, b)$, where $s \neq \text{BD}$, $v > vm(s) + \Delta v$ and $b = \false{}$, happens, ATP initiates \act{bell} and enters \mode{Ringing} mode.
+
+>>2.1.1.mcf
+[
+% tolerating mode
+true* . atp_mode(Tolerating) .  (forall m: ATPMode. !atp_mode(m))* .
+% an update where s!=BD && v>vm(s)+dv && !b happens
+exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && v <= vu && v>vm(s)+dv && !b) && update(s, v, b)
+]
+% eventually bell happens
+((mu X. [!bell]X && <true>true) &&
+% eventually atp_mode(Ringing) happens
+(mu X. [!atp_mode(Ringing)]X && <true>true))
+<<
+
+2.1.2 When ATP is in \mode{Tolerating} mode and \act{update}$(s, v, b)$, where $s \neq \text{BD}$ and $v \le vm(s)$, happens, ATP enters \mode{Normal} mode.
+
+>>2.1.2.mcf
+[
+% tolerating mode
+true* . atp_mode(Tolerating) .  (forall m: ATPMode. !atp_mode(m))* .
+% an update where s!=BD && v <= vm(s) happens
+exists s: ATPSignal, v: Nat, b: Bool. val(s != BD && v <= vm(s)) && update(s, v, b)
+]
+% eventually atp_mode(Normal) happens
+mu X.([!atp_mode(Normal)]X && <true>true)
+<<
+
+2.2 When ATP is in \mode{Tolerating} mode and \act{timeout2} happens, it enters \mode{Normal} mode.
+
+>>2.2.mcf
+[
+% tolerating mode
+true* . atp_mode(Tolerating) . (forall m: ATPMode . !atp_mode(m))* .
+% timeout2 happens
+timeout2
+]
+% eventually atp_mode(Normal) happens
+mu X. ([!atp_mode(Normal)]X && <true>true)
+<<
+
+2.3 When ATP is in \mode{Tolerating} mode, as long as none of \act{timeout2}, \act{ertms-signal} or \act{update} happens, no mode change happens.
+
+>>2.3.mcf
+[
+% tolerating mode
+true* . atp_mode(Tolerating) .
+% no timeout2, ertms_signal, update happens
+(!(timeout2 || ertms_signal || exists s: ATPSignal, v: Nat, b: Bool. update(s, v, b)))*
+]
+% no atp_mode is possible
+[exists m: ATPMode. atp_mode(m)] false
+<<
+
+3.1 When ATP is in \mode{Ringing} mode, and \act{timeout1} and \act{update}$(s, v, b)$, where $s \neq \text{BD}$ and $b = \true{}$, happens, ATP enters \mode{Normal} mode.
+
+>>3.1.mcf
+[
+% Ringing mode
+true* . atp_mode(Ringing) . ((forall m: ATPMode. !atp_mode(m)) && !timeout1)* . 
+% timeout1 and update(s,v,b) happen, where s!=BD && b==true
+timeout1 . exists s: ATPSignal, v: Nat, b: Bool. val(v<=vu && s!=BD) && update(s,v,true)
+]
+% eventually atp_mode(Normal) happens
+mu X. [!atp_mode(Normal)] X
+<<
+
+3.2 When ATP is in \mode{Ringing} mode, and \act{timeout1} and \act{update}$(s, v, b)$, where $s \neq \text{BD}$ and $b = \false{}$, happens, ATP initiates \act{ebrake} and enters \mode{Dead} mode.
+
+>>3.2.mcf
+[
+% Ringing mode
+true* . atp_mode(Ringing) . ((forall m: ATPMode. !atp_mode(m)) && (!timeout1))* . 
+% timeout1 and update(s,v,b) happen, where s!=BD && b==false
+timeout1 . exists s: ATPSignal, v: Nat, b: Bool. val(v<=vu && s!=BD) && update(s,v,false)
+]
+% eventually brake takes place and ATP enters Dead mode
+mu X.([!ebrake]X && <true>true && (mu Y. [!atp_mode(Dead)]Y && <true>true))
+<<
+
+4 When ATP is not in \mode{Standby} mode and \act{beacon-stop} happens, ATP will initiate \act{ebrake}.
+
+>>4.mcf
+[
+% ATP is not in Standby mode
+true*.(exists m:ATPMode.val(m!=Standby) && atp_mode(m)).
+% ATP does not enter Standby mode
+(!atp_mode(Standby))*.
+% beacon stop happens
+beacon_stop
+]
+% eventually ebrake happens
+mu X.(<true>true && [!ebrake]X)
+<<
+
+5 When ATP is in \mode{Standby} mode, it will not initiate \act{bell} or \act{ebrake}.
+
+>>5.mcf
+[
+% ATP is in standby mode
+true* . atp_mode(Standby).
+% no transition into another mode
+(!(exists m:ATPMode.(val(m!=Standby)&&atp_mode(m))))*
+]
+% will not initiate bell or ebrake
+[bell+ebrake]false
+<<
+
+6 When ATP is in \mode{Standby} mode and \act{update}$(s, v, b)$ happens, it intiates \act{ertms-standby}. If $s \neq \text{BD}$, it also enters \mode{Normal} mode.
+
+>>6.mcf
+forall s:ATPSignal,v: Nat,b: Bool.val(v<=vu)=>(
+[
+% ATP is in standby mode
+true*.atp_mode(Standby).
+% ATP does not enter into another mode
+(!(exists m:ATPMode.(val(m!=Standby)&&atp_mode(m))))*.
+% update happens
+update(s,v,b)
+]
+% eventually ertms_standby happens
+mu X.([!ertms_standby]X && <true>true && [ertms_standby]
+% if S!=BD ATP eventually enters into Normal mode
+(val(s!=BD)=>(mu Y.([!atp_mode(Normal)]Y && <true>true)))))
+<<
+
+7 Whenever \act{update}$(\text{BD}, v, b)$ happens, ATP enters \mode{Standby} mode.
+
+>>7.mcf
+% update(BD,s,v) happens
+[true*.exists v: Nat,b: Bool.val(v<=vu)&&update(BD,v,b)]
+% eventually enters into Standby mode
+mu X.([!atp_mode(Standby)]X && <true>true)
+<<
+
+8 After an \act{update}$(s, v, b)$ where $s \neq \text{BD}$ and $v = 0$, as long as no \act{update} happens, \act{reset} will always be eventually possible.
+
+>>8.mcf
+[
+true* .
+% update(s, 0, b) happens
+exists s: ATPSignal, b: Bool . val(s!=BD) && update(s, 0, b)
+]
+% as long as no update happens, reset is eventually possible
+mu X . (([!(exists s: ATPSignal, v: Nat, b: Bool . update(s, v, b))] X || <reset> true) && <true>true)
+<<
+
+9 After an \act{update}$(s, v, b)$ where $v > 0$, as long as no \act{update} happens, \act{reset} is never allowed.
+
+>>9.mcf
+[
+% an update where v >= 1 happens
+true* . (exists s: ATPSignal, v: Nat, b: Bool . val(v >= 1 && v <= vu) && update(s, v, b)) .
+% no more updates
+(forall s: ATPSignal, v: Nat, b: Bool . !update(s, v, b))*
+]
+% reset is not allowed
+[ reset ] false
+<<
+
+10 The system is free of deadlocks.
+
+>>10.mcf
+[ true* ] < true > true
+<<
 
 # Appendix: Unannotated mCRL2 source
 

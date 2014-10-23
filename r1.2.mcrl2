@@ -1,8 +1,0 @@
-[
-% Normal mode
-true* . atp_mode(Normal) . 
-% no more update or ertms signal happens
-(! (ertms_signal || reset || exists s: ATPSignal, v: Nat, b: Bool. update(s, v, b)))*. 
-% no bell or atp_mode is possible 
-(exists m: ATPMode. (atp_mode(m))||bell)
-]false

@@ -10,6 +10,7 @@
 # generated from doc.web
 p.mcrl2
 doc.md
+*.mcf
 
 ## Core latex/pdflatex auxiliary files:
 *.aux

@@ -1,7 +1,0 @@
-[
-true* .
-% update(s, 0, b) happens
-exists s: ATPSignal, b: Bool . val(s!=BD) && update(s, 0, b)
-]
-% as long as no update happens, reset is eventually possible
-mu X . (([!(exists s: ATPSignal, v: Nat, b: Bool . update(s, v, b))] X || <reset> true) && <true>true)
