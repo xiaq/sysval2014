@@ -7,9 +7,9 @@
 # generated from md
 *.tex
 
-# other generated files
+# generated from doc.web
 p.mcrl2
-p.md
+doc.md
 
 ## Core latex/pdflatex auxiliary files:
 *.aux
