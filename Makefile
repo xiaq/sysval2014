@@ -7,7 +7,7 @@
 	pandoc -so $@ $<
 
 %.lps: %.mcrl2
-	mcrl22lps -lregular2 -v $< $@
+	mcrl22lps -v $< $@
 
 %.lts: %.lps
 	lps2lts -vD $< $@
